@@ -1,0 +1,99 @@
+// Prisma schema for BookRalf
+// Using Postgres (e.g. Supabase) — see README section 1 for setup.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Location {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String        @default("")
+  order       Int           @default(0)
+  scheduleDays ScheduleDay[]
+  bookings    Booking[]
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  price       Float
+  durationMin Int
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  items       BookingServiceItem[]
+}
+
+model ScheduleDay {
+  id         String    @id @default(cuid())
+  locationId String
+  location   Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  date       String    // "YYYY-MM-DD"
+  startTime  String    // "09:00" 24h
+  endTime    String    // "17:00" 24h
+  bookings   Booking[]
+  createdAt  DateTime  @default(now())
+
+  @@index([date])
+  @@index([locationId, date])
+}
+
+model Booking {
+  id               String    @id @default(cuid())
+  customerName     String
+  phone            String
+  email            String
+  address          String
+  locationId       String
+  location         Location  @relation(fields: [locationId], references: [id])
+  scheduleDayId    String?
+  scheduleDay      ScheduleDay? @relation(fields: [scheduleDayId], references: [id], onDelete: SetNull)
+  date             String    // "YYYY-MM-DD"
+  startTime        String    // "12:30"
+  endTime          String    // "14:00"
+  totalPrice       Float
+  totalDurationMin Int
+  totalSlots       Int
+  status           String    @default("pending") // pending | confirmed | declined | cancelled | completed
+  items            BookingServiceItem[]
+  notifications    Notification[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([scheduleDayId])
+  @@index([status])
+}
+
+model BookingServiceItem {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+  quantity  Int     @default(1)
+  // snapshot of price/duration at time of booking, so later service edits
+  // don't retroactively change historical bookings
+  unitPrice   Float
+  unitMinutes Int
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  audience  String   // "customer" | "admin"
+  type      String   // requested | confirmed | declined | cancelled
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([audience, read])
+}
