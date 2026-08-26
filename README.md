@@ -29,7 +29,7 @@ npm run dev
 
 Visit `http://localhost:3000` for the landing page (booking is at `/book`), and
 `http://localhost:3000/staff` for the admin side (password = whatever you
-set as `NEXT_PUBLIC_ADMIN_PASSWORD` in `.env`).
+set as `ADMIN_PASSWORD` in `.env`).
 
 Using a real hosted database from the start (instead of a local SQLite
 file) sidesteps a whole class of local file-permission headaches — no
@@ -42,7 +42,7 @@ interfere with.
 |---|---|
 | `DATABASE_URL` | Supabase's **Transaction pooler** connection string (port 6543). Used for normal app queries. |
 | `DIRECT_URL` | Supabase's **Session pooler** connection string (port 5432). Used only for migrations — the transaction pooler doesn't support the prepared statements `prisma migrate` needs. Both should use the `aws-0-...pooler.supabase.com` host, not `db.[ref].supabase.co` — see note above. |
-| `NEXT_PUBLIC_ADMIN_PASSWORD` | Gate for `/staff/*`. Simple by design — see "Before you launch" below. |
+| `ADMIN_PASSWORD` | Gate for `/staff/*`. Checked server-side (`app/api/staff-auth`) so it never reaches the browser. One shared password by design — see "Before you launch" below. |
 | `RESEND_API_KEY` | From [resend.com](https://resend.com). Leave blank to skip email (in-app notifications still work). |
 | `EMAIL_FROM` | Sender address. Resend's sandbox domain works until you verify your own. |
 | `ADMIN_EMAIL` | Where "new request" / "customer cancelled" emails go. |
@@ -106,12 +106,15 @@ deploying just means putting the app itself somewhere public:
 
 ## 7. Before you launch — things worth upgrading
 
-- **Staff auth is intentionally simple**: one shared password checked in
-  the browser, stored in `sessionStorage`. It keeps casual visitors out but
-  a technically determined person could call the `/api/*` routes directly.
-  Fine for a single-operator MVP; if this business grows, swap in real
-  auth (e.g. NextAuth with a proper login) and move the admin checks into
-  the API routes themselves, not just the page gate.
+- **Staff auth**: one shared password (`ADMIN_PASSWORD`), checked
+  server-side and stored as an httpOnly cookie — never exposed to the
+  browser, and the sensitive API routes (schedule create/delete,
+  approve/decline/cancel a booking, viewing all bookings, admin
+  notifications) all verify that cookie themselves, not just the page
+  gate. A single shared password is a deliberate, reasonable choice for
+  one trusted operator; if this ever needs more than one staff account
+  with separate logins, that's the point to move to real per-user auth
+  (e.g. NextAuth).
 - **Customer identity** is just a phone number (no login/password) —
   matching how the original flow worked. Good enough for a home-visit
   barber's regulars; if that ever becomes a problem, add a verification

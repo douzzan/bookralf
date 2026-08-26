@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isStaffRequest } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request) {
+  if (!isStaffRequest(request)) {
+    return NextResponse.json({ error: "Staff login required." }, { status: 401 });
+  }
   try {
     const notifications = await prisma.notification.findMany({
       where: { audience: "admin" },
@@ -17,6 +21,9 @@ export async function GET() {
 
 // PATCH { markAllRead: true }
 export async function PATCH(request) {
+  if (!isStaffRequest(request)) {
+    return NextResponse.json({ error: "Staff login required." }, { status: 401 });
+  }
   try {
     const body = await request.json();
     if (body.markAllRead) {

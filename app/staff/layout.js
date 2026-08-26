@@ -7,21 +7,36 @@ export default function StaffLayout({ children }) {
   const [checked, setChecked] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const ok = typeof window !== "undefined" && sessionStorage.getItem("bookralf_staff_ok") === "1";
-    setUnlocked(ok);
-    setChecked(true);
+    fetch("/api/staff-auth")
+      .then((r) => r.json())
+      .then((data) => setUnlocked(!!data.authenticated))
+      .catch(() => setUnlocked(false))
+      .finally(() => setChecked(true));
   }, []);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (input === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-      sessionStorage.setItem("bookralf_staff_ok", "1");
-      setUnlocked(true);
-      setError("");
-    } else {
-      setError("Incorrect password.");
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/staff-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: input }),
+      });
+      if (res.ok) {
+        setUnlocked(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Incorrect password.");
+      }
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -42,7 +57,9 @@ export default function StaffLayout({ children }) {
             autoFocus
           />
           {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-          <button className="w-full bg-gold-500 hover:bg-gold-600 text-ink-950 font-semibold py-3 rounded-xl">Enter</button>
+          <button disabled={submitting} className="w-full bg-gold-500 hover:bg-gold-600 text-ink-950 font-semibold py-3 rounded-xl disabled:opacity-60">
+            {submitting ? "Checking..." : "Enter"}
+          </button>
         </form>
       </main>
     );

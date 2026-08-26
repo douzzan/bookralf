@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bookingInclude } from "@/lib/bookingInclude";
 import { notifyCustomerCancelled } from "@/lib/notifications";
+import { isStaffRequest } from "@/lib/auth";
 
-// DELETE /api/schedule/:id
-// Trashing a scheduled day cancels every pending/confirmed booking tied
-// to it and notifies each affected customer (in-app + email). Any other
-// booking that still references this day (completed/declined/already
-// cancelled) has its scheduleDayId cleared so the delete doesn't hit a
-// foreign-key conflict.
+// DELETE /api/schedule/:id — staff only.
+// Cancels every pending/confirmed booking tied to it and notifies each
+// affected customer (in-app + email).
 export async function DELETE(request, { params }) {
+  if (!isStaffRequest(request)) {
+    return NextResponse.json({ error: "Staff login required." }, { status: 401 });
+  }
   const { id } = params;
 
   try {
@@ -28,8 +29,6 @@ export async function DELETE(request, { params }) {
       await notifyCustomerCancelled(booking, "the scheduled day was removed");
     }
 
-    // Detach every booking still pointing at this day (past/completed/
-    // declined/already-cancelled ones included) before deleting it.
     await prisma.booking.updateMany({
       where: { scheduleDayId: id },
       data: { scheduleDayId: null },

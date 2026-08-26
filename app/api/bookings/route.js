@@ -3,15 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { bookingInclude } from "@/lib/bookingInclude";
 import { slotsNeeded, getAvailableStartTimes, timeToMinutes, minutesToTime } from "@/lib/slots";
 import { notifyBookingRequested } from "@/lib/notifications";
+import { isStaffRequest } from "@/lib/auth";
 
-// GET /api/bookings?phone=xxx           -> a customer's own bookings
-// GET /api/bookings?status=pending      -> admin: filter by status
-// GET /api/bookings                     -> admin: all bookings, newest first
+// GET /api/bookings?phone=xxx           -> a customer's own bookings (public)
+// GET /api/bookings?status=pending      -> admin: all bookings with that status (staff only)
+// GET /api/bookings                     -> admin: every booking (staff only)
+// Without a phone filter this returns every customer's name, address,
+// and phone number — that view is staff-only.
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get("phone");
     const status = searchParams.get("status");
+
+    if (!phone && !isStaffRequest(request)) {
+      return NextResponse.json({ error: "Staff login required." }, { status: 401 });
+    }
 
     const bookings = await prisma.booking.findMany({
       where: {

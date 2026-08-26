@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isStaffRequest } from "@/lib/auth";
 
 // GET /api/schedule?locationId=xxx  -> upcoming schedule days (today or later)
+// Public — customers need this to see which dates are bookable.
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -24,11 +26,11 @@ export async function GET(request) {
   }
 }
 
-// POST { dates: ["YYYY-MM-DD", ...], locationIds: [id, ...], startTime, endTime }
-// Creates one ScheduleDay per (date x location) combination. This
-// covers both the "Single Date" and "Multiple Days" admin flows since
-// a single date + single location is just a 1x1 cross product.
+// POST { dates, locationIds, startTime, endTime } — staff only.
 export async function POST(request) {
+  if (!isStaffRequest(request)) {
+    return NextResponse.json({ error: "Staff login required." }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { dates, locationIds, startTime, endTime } = body;
