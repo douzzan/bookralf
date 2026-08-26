@@ -54,6 +54,9 @@ interfere with.
   **confirmed**, **declined**, or **cancelled** — including when a scheduled
   day they're booked on gets deleted in Schedule Manager (every affected
   booking is cancelled and each customer notified individually).
+- **Customer** also gets a **day-of reminder**, once, the morning of any
+  confirmed booking — see the dedicated section below for how the timing
+  actually works.
 - **Admin** gets an email + in-app notification when a booking is
   **requested**, or when a **customer cancels their own booking**.
 - Nobody gets notified about their own action (admin doesn't self-notify
@@ -61,6 +64,32 @@ interfere with.
 
 This logic lives in `lib/notifications.js` — it's the one place to look if
 you want to change who gets told what.
+
+## 3a. The 9am reminder — how the timing actually works
+
+Vercel's free (Hobby) tier cron jobs run in **UTC only**, with **no
+per-schedule timezone support on any plan**, and Hobby specifically caps
+cron frequency at **once per day per job**. A single fixed UTC time would
+drift by an hour every time daylight saving changes, which isn't what
+"9am" should mean to an actual customer.
+
+The fix: `vercel.json` registers **two** daily triggers (13:00 UTC and
+14:00 UTC — 9am EDT and 9am EST respectively), both hitting
+`app/api/cron/reminders`. The route itself checks the *real* current time
+in `America/Toronto` and only sends reminders if it's actually 9am there
+right now — the other trigger sees a different local hour and does
+nothing. Whichever one is correct for the current time of year is the one
+that acts. Both stay within Hobby's "once per day per job" cap since each
+individual cron entry only fires once daily.
+
+A `reminderSentAt` timestamp on each booking (set the moment a reminder
+goes out) makes the whole thing idempotent — even if both triggers
+somehow matched on the same day, or you manually re-hit the route,
+nobody gets reminded twice.
+
+If you outgrow Hobby's cron limits later (Pro allows per-minute schedules
+and true precision), the two-trigger workaround becomes unnecessary, but
+there's no harm in leaving it as-is either.
 
 ## 4. One barber, shared time across locations
 

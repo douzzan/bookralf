@@ -62,6 +62,7 @@ model Booking {
   totalDurationMin Int
   totalSlots       Int
   status           String    @default("pending") // pending | confirmed | declined | cancelled | completed
+  reminderSentAt   DateTime? // set once the day-of reminder has gone out — prevents double-sends
   items            BookingServiceItem[]
   notifications    Notification[]
   createdAt        DateTime  @default(now())
