@@ -14,6 +14,7 @@ const STAFF_LINKS = [
   { href: "/staff/schedule", label: "Schedule Manager" },
   { href: "/staff/pending", label: "Pending Requests" },
   { href: "/staff/bookings", label: "All Bookings" },
+  { href: "/staff/stats", label: "Stats" },
   { href: "/staff/notifications", label: "Notifications" },
 ];
 

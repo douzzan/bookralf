@@ -52,6 +52,7 @@ export default function StaffDashboard() {
           <NavCard href="/staff/schedule" icon="📍" label="Manage Schedule" />
           <NavCard href="/staff/pending" icon="🕐" label="Review Pending" />
           <NavCard href="/staff/bookings" icon="📋" label="All Bookings" />
+          <NavCard href="/staff/stats" icon="📈" label="Stats" />
           <NavCard href="/staff/notifications" icon="🔔" label="Notifications" />
         </div>
       </main>
