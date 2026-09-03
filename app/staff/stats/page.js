@@ -16,6 +16,9 @@ export default function StatsPage() {
   const [range, setRange] = useState("month");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [reportPeriod, setReportPeriod] = useState("month");
+  const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [reportYear, setReportYear] = useState(() => new Date().getFullYear());
 
   useEffect(() => {
     setData(null);
@@ -47,6 +50,51 @@ export default function StatsPage() {
           ))}
         </div>
 
+        <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 mb-6">
+          <h2 className="font-semibold mb-3">Print Report</h2>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReportPeriod("month")}
+                className={`text-sm px-3 py-2 rounded-lg border ${
+                  reportPeriod === "month" ? "bg-gold-500 border-gold-500 text-ink-950 font-semibold" : "border-ink-600 text-gray-400"
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setReportPeriod("year")}
+                className={`text-sm px-3 py-2 rounded-lg border ${
+                  reportPeriod === "year" ? "bg-gold-500 border-gold-500 text-ink-950 font-semibold" : "border-ink-600 text-gray-400"
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
+
+            {reportPeriod === "month" ? (
+              <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} className="w-auto" />
+            ) : (
+              <select value={reportYear} onChange={(e) => setReportYear(Number(e.target.value))} className="w-auto">
+                {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <a
+              href={`/staff/stats/report?period=${reportPeriod}&value=${reportPeriod === "month" ? reportMonth : reportYear}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-gold-500 hover:bg-gold-600 text-ink-950 font-semibold text-sm px-4 py-2 rounded-lg"
+            >
+              🖨 Generate Report
+            </a>
+          </div>
+        </div>
+
         {!data && !error && <p className="text-gray-500 text-sm">Loading…</p>}
 
         {data && (
@@ -55,6 +103,40 @@ export default function StatsPage() {
               <StatCard label="Total Revenue" value={`$${data.totalRevenue.toFixed(2)}`} />
               <StatCard label="Completed Bookings" value={data.completedCount} />
               <StatCard label="Average per Booking" value={`$${data.avgPerBooking.toFixed(2)}`} />
+            </div>
+
+            <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 md:p-6 mb-6">
+              <h2 className="font-semibold mb-3">Performance Summary</h2>
+              {data.comparison ? (
+                <div className="space-y-2">
+                  <ChangeLine label="Revenue" change={data.comparison.revenueChange} previousLabel={data.comparison.previousLabel} />
+                  <ChangeLine
+                    label="Appointments"
+                    change={data.comparison.appointmentsChange}
+                    previousLabel={data.comparison.previousLabel}
+                  />
+                  <ChangeLine
+                    label="Average transaction"
+                    change={data.comparison.avgTransactionChange}
+                    previousLabel={data.comparison.previousLabel}
+                  />
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">Performance comparison isn't available for All Time.</p>
+              )}
+            </div>
+
+            <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 md:p-6 mb-6">
+              <h2 className="font-semibold mb-4">Client Insights</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <MiniStat label="New Clients" value={range === "all" ? "N/A" : data.clientMetrics.newClients} />
+                <MiniStat label="Returning Clients" value={range === "all" ? "N/A" : data.clientMetrics.returningClients} />
+                <MiniStat label="Avg Bookings / Client" value={data.clientMetrics.avgBookingsPerClient.toFixed(1)} />
+                <MiniStat
+                  label="Retention Rate"
+                  value={data.clientMetrics.retentionRate === null ? "N/A" : `${data.clientMetrics.retentionRate.toFixed(1)}%`}
+                />
+              </div>
             </div>
 
             <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 md:p-6 mb-6">
@@ -70,6 +152,36 @@ export default function StatsPage() {
         )}
       </main>
     </>
+  );
+}
+
+function ChangeLine({ label, change, previousLabel }) {
+  if (change === null) {
+    return (
+      <div className="text-sm text-gray-500">
+        {label}: not enough data from the {previousLabel} to compare.
+      </div>
+    );
+  }
+  const up = change >= 0;
+  const color = up ? "text-emerald-400" : "text-red-400";
+  const arrow = up ? "▲" : "▼";
+  return (
+    <div className="text-sm">
+      <span className={`font-semibold ${color}`}>
+        {arrow} {label} {up ? "increased" : "decreased"} {Math.abs(change).toFixed(1)}%
+      </span>{" "}
+      <span className="text-gray-400">compared with the {previousLabel}.</span>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="text-center">
+      <div className="text-2xl font-bold text-gold-400">{value}</div>
+      <div className="text-gray-400 text-xs">{label}</div>
+    </div>
   );
 }
 

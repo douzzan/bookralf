@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isStaffRequest } from "@/lib/auth";
+import { computeClientMetrics, periodTotals, percentChange } from "@/lib/reportMetrics";
 
 // GET /api/stats?range=week|month|year|all — staff only.
 // Scoped to COMPLETED bookings only — that's the only status that
@@ -25,6 +26,8 @@ function dayLabel(d) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+const WINDOW_DAYS = { week: 7, month: 30, year: 365 };
+
 export async function GET(request) {
   if (!isStaffRequest(request)) {
     return NextResponse.json({ error: "Staff login required." }, { status: 401 });
@@ -35,24 +38,21 @@ export async function GET(request) {
     const range = searchParams.get("range") || "month";
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayStr = toDateStr(today);
 
     let cutoffStr = null;
-    if (range === "week") cutoffStr = toDateStr(addDays(today, -6));
-    else if (range === "month") cutoffStr = toDateStr(addDays(today, -29));
-    else if (range === "year") cutoffStr = toDateStr(addDays(today, -364));
+    if (range in WINDOW_DAYS) cutoffStr = toDateStr(addDays(today, -(WINDOW_DAYS[range] - 1)));
     // "all" leaves cutoffStr as null — no lower bound
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        status: "completed",
-        ...(cutoffStr ? { date: { gte: cutoffStr } } : {}),
-      },
-      include: {
-        location: true,
-        items: { include: { service: true } },
-      },
+    // Fetch ALL completed bookings, unbounded — client metrics ("was this
+    // their first ever visit") need full history, not just this window.
+    const allBookings = await prisma.booking.findMany({
+      where: { status: "completed" },
+      include: { location: true, items: { include: { service: true } } },
       orderBy: { date: "asc" },
     });
+
+    const bookings = cutoffStr ? allBookings.filter((b) => b.date >= cutoffStr) : allBookings;
 
     const totalRevenue = bookings.reduce((sum, b) => sum + b.totalPrice, 0);
     const completedCount = bookings.length;
@@ -85,7 +85,7 @@ export async function GET(request) {
     // Time series — daily buckets for week/month, monthly buckets for year/all
     let series = [];
     if (range === "week" || range === "month") {
-      const numDays = range === "week" ? 7 : 30;
+      const numDays = WINDOW_DAYS[range];
       const dayTotals = new Map();
       for (const b of bookings) {
         dayTotals.set(b.date, (dayTotals.get(b.date) || 0) + b.totalPrice);
@@ -106,7 +106,6 @@ export async function GET(request) {
       if (range === "year") {
         monthCursor = new Date(today.getFullYear(), today.getMonth() - 11, 1);
       } else {
-        // "all" — start from the earliest completed booking's month, or this month if none yet
         const earliest = bookings[0]?.date;
         monthCursor = earliest
           ? new Date(Number(earliest.slice(0, 4)), Number(earliest.slice(5, 7)) - 1, 1)
@@ -120,7 +119,47 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ totalRevenue, completedCount, avgPerBooking, byService, byLocation, series });
+    // Previous period (same length, immediately before this one) — powers
+    // both the % change summary and client retention. "all" has no
+    // previous period by definition, so this stays null in that case.
+    let comparison = null;
+    let prevStart = null;
+    let prevEnd = null;
+    if (cutoffStr) {
+      const windowDays = WINDOW_DAYS[range];
+      const prevEndDate = addDays(new Date(cutoffStr + "T00:00:00"), -1);
+      const prevStartDate = addDays(prevEndDate, -(windowDays - 1));
+      prevStart = toDateStr(prevStartDate);
+      prevEnd = toDateStr(prevEndDate);
+
+      const current = periodTotals(allBookings, cutoffStr, todayStr);
+      const previous = periodTotals(allBookings, prevStart, prevEnd);
+      comparison = {
+        previousLabel: range === "week" ? "previous week" : range === "month" ? "previous month" : "previous year",
+        revenueChange: percentChange(current.revenue, previous.revenue),
+        appointmentsChange: percentChange(current.count, previous.count),
+        avgTransactionChange: percentChange(current.avg, previous.avg),
+      };
+    }
+
+    const clientMetrics = computeClientMetrics({
+      bookings: allBookings,
+      periodStart: cutoffStr || (allBookings[0]?.date ?? todayStr),
+      periodEnd: todayStr,
+      prevStart,
+      prevEnd,
+    });
+
+    return NextResponse.json({
+      totalRevenue,
+      completedCount,
+      avgPerBooking,
+      byService,
+      byLocation,
+      series,
+      comparison,
+      clientMetrics,
+    });
   } catch (err) {
     console.error("GET /api/stats failed:", err);
     return NextResponse.json({ error: "Could not load stats. Check the server logs." }, { status: 500 });
