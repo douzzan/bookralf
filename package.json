@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "node prisma/seed.js",
+    "fix-bulk-haircut": "node prisma/scripts/update-services-for-bulk-haircut.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

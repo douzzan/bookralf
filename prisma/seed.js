@@ -18,11 +18,10 @@ async function main() {
   }
 
   const services = [
-    { name: "Haircut", description: "Classic cut and style", price: 30, durationMin: 30, order: 1 },
+    { name: "Haircut", description: "Classic cut and style", price: 30, durationMin: 30, order: 1, isBulkHaircut: true },
     { name: "Ceremonial Haircut", description: "Premium cut for special occasions", price: 60, durationMin: 60, order: 2 },
-    { name: "Beard", description: "Beard trim and shape", price: 20, durationMin: 20, order: 3 },
-    { name: "Child", description: "Kids haircut (under 12)", price: 25, durationMin: 25, order: 4 },
-    { name: "Haircut + Beard", description: "Full cut and beard service", price: 45, durationMin: 45, order: 5 },
+    { name: "Child", description: "Kids haircut (under 12)", price: 25, durationMin: 25, order: 3, isBulkHaircut: true },
+    { name: "Haircut + Beard", description: "Full cut and beard service", price: 45, durationMin: 45, order: 4, isBulkHaircut: true },
   ];
 
   for (const svc of services) {

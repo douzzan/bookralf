@@ -102,13 +102,47 @@ person and can't be in two places at once. This lives in
 query existing bookings by `date` alone, not by a specific location's
 schedule entry.
 
-## 5. Multiple of the same service
+## 5. Multiple of the same service, and the bulk-haircut time discount
 
 The services step supports quantity, not just add/remove — tap "+" again on
 a service already in the cart to add another unit (e.g. 3x Haircut). Total
-quantity across all services is capped at 5 per appointment, matching the
-"up to 5 services" rule from the original flow. Total price, duration, and
-required consecutive 30-minute slots are all computed from quantities.
+quantity across all services is capped at **10** per appointment.
+
+**Haircut, Child, and Haircut + Beard** get a bulk-time discount when
+several are booked together in one visit — no travel time between them,
+so they don't need to stack at full length each. This is the
+`isBulkHaircut` flag on the `Service` model; **Ceremonial Haircut** (and
+anything else added later without that flag) always uses its own full
+duration regardless of how many are booked, added on top of whatever the
+bucket works out to.
+
+| Bucket count | Total time |
+|---|---|
+| 1–2 | sum of those items' own durations (no discount yet) |
+| 3 | 60 min flat |
+| 4–5 | 90 min flat |
+| 6–8 | 120 min flat |
+| 9–10 | 150 min flat |
+
+Price is never affected by this — only the time reserved on the
+schedule. The calculation lives in one place, `lib/bucketDuration.js`,
+imported by both the booking wizard (for the live preview as you build
+your cart) and the booking API route (which recomputes it independently
+server-side — the client's number is never trusted for the actual
+booking, same principle as price and availability elsewhere in this app).
+
+**If you're upgrading an existing deployment** (database already
+seeded before this feature existed), run this once after migrating:
+```bash
+npx prisma migrate dev --name add_bulk_haircut_bucket
+npm run fix-bulk-haircut
+```
+The second command deactivates the old standalone "Beard" service
+(soft-deleted via `active: false`, not actually removed — deleting it
+outright would break the foreign key on any past booking that used it)
+and marks the three bucket services correctly. `seed.js` alone won't do
+this on an already-seeded database, since it only creates rows that
+don't exist yet — it won't retroactively update ones that do.
 
 ## 6. Deploying it for real
 

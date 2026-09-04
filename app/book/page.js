@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Nav from "../components/Nav";
 import { safeFetchJson } from "../../lib/safeFetch";
+import { computeTotalDuration, MAX_TOTAL_SERVICE_QTY } from "../../lib/bucketDuration";
 
-const MAX_TOTAL_QTY = 5;
+const MAX_TOTAL_QTY = MAX_TOTAL_SERVICE_QTY;
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function pad(n) {
@@ -76,7 +77,10 @@ export default function BookingPage() {
     [cart, services]
   );
   const totalPrice = cartItems.reduce((sum, i) => sum + i.svc.price * i.qty, 0);
-  const totalDuration = cartItems.reduce((sum, i) => sum + i.svc.durationMin * i.qty, 0);
+  const totalDuration = computeTotalDuration(
+    cartItems.map((i) => ({ serviceId: i.serviceId, quantity: i.qty })),
+    services
+  );
   const totalSlots = Math.ceil(totalDuration / 30) || 0;
 
   useEffect(() => {

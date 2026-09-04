@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bookingInclude } from "@/lib/bookingInclude";
 import { slotsNeeded, getAvailableStartTimes, timeToMinutes, minutesToTime } from "@/lib/slots";
+import { computeTotalDuration, MAX_TOTAL_SERVICE_QTY } from "@/lib/bucketDuration";
 import { notifyBookingRequested } from "@/lib/notifications";
 import { isStaffRequest } from "@/lib/auth";
 
@@ -62,13 +63,16 @@ export async function POST(request) {
       return NextResponse.json({ error: "One or more services could not be found" }, { status: 400 });
     }
 
+    const totalQty = items.reduce((sum, i) => sum + Math.max(1, Number(i.quantity) || 1), 0);
+    if (totalQty > MAX_TOTAL_SERVICE_QTY) {
+      return NextResponse.json({ error: `A booking can include at most ${MAX_TOTAL_SERVICE_QTY} services.` }, { status: 400 });
+    }
+
     let totalPrice = 0;
-    let totalDurationMin = 0;
     const itemsToCreate = items.map((i) => {
       const svc = services.find((s) => s.id === i.serviceId);
       const qty = Math.max(1, Number(i.quantity) || 1);
       totalPrice += svc.price * qty;
-      totalDurationMin += svc.durationMin * qty;
       return {
         serviceId: svc.id,
         quantity: qty,
@@ -76,6 +80,11 @@ export async function POST(request) {
         unitMinutes: svc.durationMin,
       };
     });
+
+    // Bulk-haircut time discount: several Haircut/Child/Haircut+Beard
+    // services in one visit share a time bucket instead of stacking
+    // each one's full duration — see lib/bucketDuration.js.
+    const totalDurationMin = computeTotalDuration(items, services);
 
     const needed = slotsNeeded(totalDurationMin);
 

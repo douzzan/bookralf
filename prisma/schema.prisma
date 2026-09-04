@@ -28,6 +28,11 @@ model Service {
   durationMin Int
   active      Boolean  @default(true)
   order       Int      @default(0)
+  // Haircut, Child, and Haircut+Beard share a bulk-time discount when
+  // several are booked together (no travel time between them since it's
+  // one visit). Ceremonial Haircut and anything else stays at full price
+  // in time regardless of how many are booked. See lib/bucketDuration.js.
+  isBulkHaircut Boolean @default(false)
   items       BookingServiceItem[]
 }
 
