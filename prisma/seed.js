@@ -31,6 +31,19 @@ async function main() {
     }
   }
 
+  const brackets = [
+    { minCount: 3, maxCount: 3, flatMinutes: 60, order: 1 },
+    { minCount: 4, maxCount: 5, flatMinutes: 90, order: 2 },
+    { minCount: 6, maxCount: 8, flatMinutes: 120, order: 3 },
+    { minCount: 9, maxCount: 10, flatMinutes: 150, order: 4 },
+  ];
+  for (const b of brackets) {
+    const existing = await prisma.bulkHaircutBracket.findFirst({ where: { minCount: b.minCount, maxCount: b.maxCount } });
+    if (!existing) {
+      await prisma.bulkHaircutBracket.create({ data: b });
+    }
+  }
+
   console.log("Seed complete.");
 }
 

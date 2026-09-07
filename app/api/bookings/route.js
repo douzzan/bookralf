@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bookingInclude } from "@/lib/bookingInclude";
 import { slotsNeeded, getAvailableStartTimes, timeToMinutes, minutesToTime } from "@/lib/slots";
-import { computeTotalDuration, MAX_TOTAL_SERVICE_QTY } from "@/lib/bucketDuration";
+import { computeTotalDuration, getMaxTotalQty } from "@/lib/bucketDuration";
 import { notifyBookingRequested } from "@/lib/notifications";
 import { isStaffRequest } from "@/lib/auth";
 
@@ -63,9 +63,12 @@ export async function POST(request) {
       return NextResponse.json({ error: "One or more services could not be found" }, { status: 400 });
     }
 
+    const brackets = await prisma.bulkHaircutBracket.findMany();
+    const maxTotalQty = getMaxTotalQty(brackets);
+
     const totalQty = items.reduce((sum, i) => sum + Math.max(1, Number(i.quantity) || 1), 0);
-    if (totalQty > MAX_TOTAL_SERVICE_QTY) {
-      return NextResponse.json({ error: `A booking can include at most ${MAX_TOTAL_SERVICE_QTY} services.` }, { status: 400 });
+    if (totalQty > maxTotalQty) {
+      return NextResponse.json({ error: `A booking can include at most ${maxTotalQty} services.` }, { status: 400 });
     }
 
     let totalPrice = 0;
@@ -83,8 +86,10 @@ export async function POST(request) {
 
     // Bulk-haircut time discount: several Haircut/Child/Haircut+Beard
     // services in one visit share a time bucket instead of stacking
-    // each one's full duration — see lib/bucketDuration.js.
-    const totalDurationMin = computeTotalDuration(items, services);
+    // each one's full duration — see lib/bucketDuration.js. Brackets
+    // are fetched live so staff edits to the discount table take effect
+    // on the very next booking, with no code change or redeploy needed.
+    const totalDurationMin = computeTotalDuration(items, services, brackets);
 
     const needed = slotsNeeded(totalDurationMin);
 

@@ -23,6 +23,17 @@ CREATE TABLE "Service" (
 );
 
 -- CreateTable
+CREATE TABLE "BulkHaircutBracket" (
+    "id" TEXT NOT NULL,
+    "minCount" INTEGER NOT NULL,
+    "maxCount" INTEGER NOT NULL,
+    "flatMinutes" INTEGER NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "BulkHaircutBracket_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "ScheduleDay" (
     "id" TEXT NOT NULL,
     "locationId" TEXT NOT NULL,

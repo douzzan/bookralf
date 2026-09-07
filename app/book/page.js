@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Nav from "../components/Nav";
 import { safeFetchJson } from "../../lib/safeFetch";
-import { computeTotalDuration, MAX_TOTAL_SERVICE_QTY } from "../../lib/bucketDuration";
-
-const MAX_TOTAL_QTY = MAX_TOTAL_SERVICE_QTY;
+import { computeTotalDuration, getMaxTotalQty } from "../../lib/bucketDuration";
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 function pad(n) {
@@ -30,6 +28,7 @@ export default function BookingPage() {
 
   const [locations, setLocations] = useState([]);
   const [services, setServices] = useState([]);
+  const [brackets, setBrackets] = useState([]);
   const [scheduleDays, setScheduleDays] = useState([]);
 
   const [location, setLocation] = useState(null);

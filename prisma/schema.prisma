@@ -36,6 +36,19 @@ model Service {
   items       BookingServiceItem[]
 }
 
+// The bulk-haircut discount table itself — editable from the staff Edit
+// Services page. Counts of 1-2 always use the actual sum of the chosen
+// items' own durations (handled in code, not a row here, since it isn't
+// a flat value). A count landing in one of these ranges uses flatMinutes
+// instead, regardless of which bulk-eligible services make it up.
+model BulkHaircutBracket {
+  id          String @id @default(cuid())
+  minCount    Int
+  maxCount    Int
+  flatMinutes Int
+  order       Int    @default(0)
+}
+
 model ScheduleDay {
   id         String    @id @default(cuid())
   locationId String
