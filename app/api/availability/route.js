@@ -27,8 +27,8 @@ export async function GET(request) {
       select: { startTime: true, endTime: true },
     });
 
-    const needed = slotsNeeded(durationMin);
-    const startTimes = getAvailableStartTimes(scheduleDay, existingBookings, needed);
+    const needed = slotsNeeded(durationMin); // informational only, for "needs N slots" messaging
+    const startTimes = getAvailableStartTimes(scheduleDay, existingBookings, durationMin);
 
     return NextResponse.json({
       scheduleDayId: scheduleDay.id,

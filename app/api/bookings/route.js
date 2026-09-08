@@ -91,16 +91,18 @@ export async function POST(request) {
     // on the very next booking, with no code change or redeploy needed.
     const totalDurationMin = computeTotalDuration(items, services, brackets);
 
-    const needed = slotsNeeded(totalDurationMin);
+    const needed = slotsNeeded(totalDurationMin); // informational only — stored for display, not used for blocking
 
     // Re-check availability server-side to prevent double-booking races.
     // Blocked across all locations sharing this date — Ralf can only be
-    // one place at a time.
+    // one place at a time. Uses the exact requested duration, not a
+    // padded slot count, so the true reserved window matches what
+    // getAvailableStartTimes actually offered the customer.
     const existingBookings = await prisma.booking.findMany({
       where: { date, status: { in: ["pending", "confirmed"] } },
       select: { startTime: true, endTime: true },
     });
-    const validStarts = getAvailableStartTimes(scheduleDay, existingBookings, needed);
+    const validStarts = getAvailableStartTimes(scheduleDay, existingBookings, totalDurationMin);
     if (!validStarts.includes(startTime)) {
       return NextResponse.json(
         { error: "That time is no longer available. Please choose another." },
@@ -108,7 +110,7 @@ export async function POST(request) {
       );
     }
 
-    const endTime = minutesToTime(timeToMinutes(startTime) + needed * 30);
+    const endTime = minutesToTime(timeToMinutes(startTime) + totalDurationMin);
 
     const booking = await prisma.booking.create({
       data: {

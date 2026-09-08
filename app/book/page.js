@@ -49,6 +49,7 @@ export default function BookingPage() {
   useEffect(() => {
     safeFetchJson("/api/locations", { expectArray: true, onSuccess: setLocations, onError: setError });
     safeFetchJson("/api/services", { expectArray: true, onSuccess: setServices, onError: setError });
+    safeFetchJson("/api/bulk-haircut-brackets", { expectArray: true, onSuccess: setBrackets, onError: setError });
     const savedPhone = typeof window !== "undefined" ? localStorage.getItem("bookralf_phone") : null;
     if (savedPhone) setForm((f) => ({ ...f, phone: savedPhone }));
   }, []);
@@ -65,6 +66,7 @@ export default function BookingPage() {
   const availableDateSet = useMemo(() => new Set(scheduleDays.map((d) => d.date)), [scheduleDays]);
 
   const totalQty = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
+  const MAX_TOTAL_QTY = getMaxTotalQty(brackets);
   const cartItems = useMemo(
     () =>
       Object.entries(cart)
@@ -386,7 +388,7 @@ export default function BookingPage() {
           <div>
             <div className="bg-ink-800 rounded-lg px-4 py-2 text-sm text-gold-300 mb-4">
               {location.name} · {formatDateLabel(date)} ·{" "}
-              {formatTime12h(startTime)} – {formatTime12h(availability.startTimes ? computeEnd(startTime, availability.slotsNeeded) : "")}
+              {formatTime12h(startTime)} – {formatTime12h(availability.startTimes ? computeEnd(startTime, totalDuration) : "")}
             </div>
 
             <label className="block mb-3">
@@ -435,7 +437,7 @@ export default function BookingPage() {
             <div className="space-y-3 mb-6 text-sm">
               <Row label="Area" value={location.name} />
               <Row label="Date" value={formatDateLabel(date)} />
-              <Row label="Time" value={`${formatTime12h(startTime)} – ${formatTime12h(computeEnd(startTime, availability.slotsNeeded))}`} />
+              <Row label="Time" value={`${formatTime12h(startTime)} – ${formatTime12h(computeEnd(startTime, totalDuration))}`} />
               <Row
                 label={`Services (${cartItems.length})`}
                 value={cartItems.map((i) => (i.qty > 1 ? `${i.svc.name} x${i.qty}` : i.svc.name)).join(", ")}
@@ -461,10 +463,10 @@ export default function BookingPage() {
   );
 }
 
-function computeEnd(startTime, slots) {
-  if (!startTime || !slots) return startTime;
+function computeEnd(startTime, durationMin) {
+  if (!startTime || !durationMin) return startTime;
   const [h, m] = startTime.split(":").map(Number);
-  const total = h * 60 + m + slots * 30;
+  const total = h * 60 + m + durationMin;
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
