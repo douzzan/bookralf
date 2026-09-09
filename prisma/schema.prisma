@@ -81,6 +81,9 @@ model Booking {
   totalSlots       Int
   status           String    @default("pending") // pending | confirmed | declined | cancelled | completed
   reminderSentAt   DateTime? // set once the day-of reminder has gone out — prevents double-sends
+  invoiceNumber    String?   // e.g. "INV-2026-0042" — assigned once, on first send, then reused on resend
+  invoicedAt       DateTime? // when the invoice was first sent
+  invoicePaid      Boolean   @default(false) // staff-toggled, purely informational — no payment processing involved
   items            BookingServiceItem[]
   notifications    Notification[]
   createdAt        DateTime  @default(now())

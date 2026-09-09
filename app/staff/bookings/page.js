@@ -95,6 +95,10 @@ export default function AllBookingsPage() {
     return map;
   }, [filtered, dayStrs]);
 
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
+  const [toggleBusy, setToggleBusy] = useState(false);
+  const [invoiceMsg, setInvoiceMsg] = useState("");
+
   async function setStatus(id, status) {
     setBusy(true);
     const res = await fetch(`/api/bookings/${id}`, {
@@ -105,6 +109,36 @@ export default function AllBookingsPage() {
     setBusy(false);
     if (res.ok) {
       setSelected(null);
+      load();
+    }
+  }
+
+  async function sendInvoice(id) {
+    setInvoiceBusy(true);
+    setInvoiceMsg("");
+    const res = await fetch(`/api/bookings/${id}/invoice`, { method: "POST" });
+    const data = await res.json();
+    setInvoiceBusy(false);
+    if (!res.ok) {
+      setInvoiceMsg(data.error || "Could not send the invoice.");
+      return;
+    }
+    setInvoiceMsg(`Invoice ${data.booking.invoiceNumber} sent to ${data.booking.email}.`);
+    setSelected(data.booking);
+    load();
+  }
+
+  async function toggleInvoicePaid(id, paid) {
+    setToggleBusy(true);
+    const res = await fetch(`/api/bookings/${id}/invoice`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paid }),
+    });
+    const data = await res.json();
+    setToggleBusy(false);
+    if (res.ok) {
+      setSelected(data);
       load();
     }
   }
@@ -202,7 +236,10 @@ export default function AllBookingsPage() {
                     return (
                       <button
                         key={b.id}
-                        onClick={() => setSelected(b)}
+                        onClick={() => {
+                          setSelected(b);
+                          setInvoiceMsg("");
+                        }}
                         className={`absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-0.5 text-left overflow-hidden ${style.bg} ${style.border} ${style.text} hover:brightness-110 transition`}
                         style={{ top, height }}
                       >
@@ -283,6 +320,44 @@ export default function AllBookingsPage() {
                 >
                   Cancel Booking
                 </button>
+              </div>
+            )}
+
+            {(selected.status === "confirmed" || selected.status === "completed") && (
+              <div className="mt-5 pt-5 border-t border-ink-700">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm">
+                    {selected.invoiceNumber ? (
+                      <>
+                        <span className="text-gray-300 font-medium">{selected.invoiceNumber}</span>
+                        <span className="text-gray-500"> · sent {formatDateLabel(selected.invoicedAt.slice(0, 10))}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-500">No invoice sent yet</span>
+                    )}
+                  </div>
+                  <button
+                    disabled={toggleBusy}
+                    onClick={() => toggleInvoicePaid(selected.id, !selected.invoicePaid)}
+                    className={`text-xs px-2 py-1 rounded-full border font-medium disabled:opacity-60 ${
+                      selected.invoicePaid
+                        ? "text-emerald-400 border-emerald-700 bg-emerald-500/10"
+                        : "text-amber-400 border-amber-700 bg-amber-500/10"
+                    }`}
+                  >
+                    {selected.invoicePaid ? "Paid" : "Unpaid"} — tap to toggle
+                  </button>
+                </div>
+
+                <button
+                  disabled={invoiceBusy}
+                  onClick={() => sendInvoice(selected.id)}
+                  className="w-full text-gold-400 border border-gold-700 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-60"
+                >
+                  {invoiceBusy ? "Sending…" : selected.invoiceNumber ? "Resend Invoice" : "Send Invoice"}
+                </button>
+
+                {invoiceMsg && <p className="text-xs text-gray-400 mt-2">{invoiceMsg}</p>}
               </div>
             )}
           </div>
