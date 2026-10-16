@@ -178,14 +178,14 @@ export default function LandingPage() {
 
         <div className="divider-fade" />
 
-        {/* ---------- PHOTO BAND (optional — hides itself if band.jpg is missing) ---------- */}
+        {/* ---------- PHOTO BAND (optional — hides itself if band.jpg is missing) ---------- 
         <Reveal as="section">
           <ParallaxImage src="/images/band.jpg" alt="" className="h-[40vh] md:h-[50vh]">
             <div className="absolute inset-0 bg-near-black/35" />
           </ParallaxImage>
         </Reveal>
 
-        <div className="divider-fade" />
+        <div className="divider-fade" />*/}
 
         {/* ---------- TRUST BADGES ---------- */}
         <section className="bg-charcoal">
