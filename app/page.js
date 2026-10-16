@@ -23,8 +23,8 @@ const FEATURES = [
     ),
   },
   {
-    title: "Hot Towel Finish",
-    blurb: "A warm-towel close and neck cleanup to send you off sharp.",
+    title: "Special Occasions",
+    blurb: "Upsheirn or Chattan cleanup to send you off sharp.",
     icon: (
       <svg viewBox="0 0 40 40" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M10 26c0-6 4-9 10-9s10 3 10 9" />
@@ -105,8 +105,8 @@ export default function LandingPage() {
 
           <Reveal delay={200}>
             <p className="font-fraunces text-lg md:text-xl text-paper/70 max-w-xl mx-auto mb-10 leading-relaxed">
-              Ralf brings a full barbershop setup to your door — precision cuts, hot towel
-              finish, no waiting room. One chair, one client, one hour set aside for you.
+              Ralf brings a full barbershop setup to your door — precision cuts, specialty
+              finish, no waiting room. One chair, one client, time set aside for you.
             </p>
           </Reveal>
 
