@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import CrestRC from "./CrestRC";
+import Image from "next/image";
 
 const CUSTOMER_LINKS = [
   { href: "/book", label: "Book an Appointment" },
@@ -25,9 +25,15 @@ export default function Nav({ variant = "customer" }) {
   return (
     <header className="border-b border-ink-700 bg-ink-950 sticky top-0 z-30">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-        <Link href={homeHref} className="flex items-center gap-3 text-lg font-fraunces italic text-gold-400">
-          <CrestRC className="w-10 h-10 text-gold-500" />
-          Book Ralf
+        <Link href={homeHref} className="flex items-center" aria-label="Ralf's Chops — home">
+          <Image
+            src="/images/ralfs-chops-wordmark.png"
+            alt="Ralf's Chops"
+            width={422}
+            height={48}
+            priority
+            className="h-auto w-[180px] md:w-[210px]"
+          />
         </Link>
 
         {/* Desktop nav */}

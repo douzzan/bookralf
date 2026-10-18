@@ -6,7 +6,7 @@ import Nav from "./components/Nav";
 import Reveal from "./components/Reveal";
 import HeroMark from "./components/HeroMark";
 import ParallaxImage from "./components/ParallaxImage";
-import Crest from "./components/Crest";
+import Image from "next/image";
 import CrestRC from "./components/CrestRC";
 import { safeFetchJson } from "../lib/safeFetch";
 
@@ -88,7 +88,7 @@ export default function LandingPage() {
           />
 
           <Reveal className="flex justify-center mb-6">
-            <Crest className="w-14 h-14 text-gold-500" />
+            <CrestRC className="w-16 h-16 text-gold-500" />
           </Reveal>
 
           <Reveal delay={80}>
@@ -172,7 +172,7 @@ export default function LandingPage() {
                 Every visit is one chair, one client, one hour set aside — sharpened tools and full
                 attention, in the room where you already feel most yourself.
               </p>
-              <p className="font-inter text-xs tracking-[0.2em] text-gold-400 uppercase">— The Book Ralf Standard</p>
+              <p className="font-inter text-xs tracking-[0.2em] text-gold-400 uppercase">— The Ralf&rsquo;s Chops Standard</p>
             </Reveal>
           </div>
         </section>
@@ -283,7 +283,13 @@ export default function LandingPage() {
         {/* ---------- FOOTER ---------- */}
         <footer className="max-w-5xl mx-auto px-6 md:px-10 py-14 flex flex-col items-center text-center gap-4">
           <CrestRC className="w-14 h-14 text-gold-500" />
-          <p className="font-fraunces italic text-lg text-paper/80">Book Ralf</p>
+          <Image
+            src="/images/ralfs-chops-wordmark.png"
+            alt="Ralf's Chops"
+            width={422}
+            height={48}
+            className="h-auto w-[220px] md:w-[260px]"
+          />
           <p className="font-inter text-xs tracking-widest text-paper/40 uppercase">
             {locations.map((l) => l.name).join(" · ") || "Thornhill · Clanton · South · Others"}
           </p>
@@ -302,7 +308,7 @@ export default function LandingPage() {
             </svg>
           </a>
 
-          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Book Ralf</p>
+          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Ralf's Chops</p>
         </footer>
       </main>
     </>
