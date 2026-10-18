@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import Crest from "./Crest";
+import CrestRC from "./CrestRC";
 
 const CUSTOMER_LINKS = [
   { href: "/book", label: "Book an Appointment" },
@@ -14,8 +14,6 @@ const STAFF_LINKS = [
   { href: "/staff/schedule", label: "Schedule Manager" },
   { href: "/staff/pending", label: "Pending Requests" },
   { href: "/staff/bookings", label: "All Bookings" },
-  { href: "/staff/services", label: "Edit Services" },
-  { href: "/staff/stats", label: "Stats" },
   { href: "/staff/notifications", label: "Notifications" },
 ];
 
@@ -28,7 +26,7 @@ export default function Nav({ variant = "customer" }) {
     <header className="border-b border-ink-700 bg-ink-950 sticky top-0 z-30">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
         <Link href={homeHref} className="flex items-center gap-3 text-lg font-fraunces italic text-gold-400">
-          <Crest className="w-8 h-8 text-gold-500" />
+          <CrestRC className="w-10 h-10 text-gold-500" />
           Book Ralf
         </Link>
 

@@ -7,6 +7,7 @@ import Reveal from "./components/Reveal";
 import HeroMark from "./components/HeroMark";
 import ParallaxImage from "./components/ParallaxImage";
 import Crest from "./components/Crest";
+import CrestRC from "./components/CrestRC";
 import { safeFetchJson } from "../lib/safeFetch";
 
 const FEATURES = [
@@ -281,14 +282,14 @@ export default function LandingPage() {
 
         {/* ---------- FOOTER ---------- */}
         <footer className="max-w-5xl mx-auto px-6 md:px-10 py-14 flex flex-col items-center text-center gap-4">
-          <Crest className="w-10 h-10 text-gold-500" />
+          <CrestRC className="w-14 h-14 text-gold-500" />
           <p className="font-fraunces italic text-lg text-paper/80">Book Ralf</p>
           <p className="font-inter text-xs tracking-widest text-paper/40 uppercase">
             {locations.map((l) => l.name).join(" · ") || "Thornhill · Clanton · South · Others"}
           </p>
 
           <a
-            href="https://www.instagram.com/ralfschops/"
+            href="https://www.instagram.com/yourhandle"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
