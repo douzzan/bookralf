@@ -289,7 +289,7 @@ export default function LandingPage() {
           </p>
 
           <a
-            href="https://www.instagram.com/yourhandle"
+            href="https://www.instagram.com/ralfschops/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
