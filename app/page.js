@@ -284,11 +284,11 @@ export default function LandingPage() {
         <footer className="max-w-5xl mx-auto px-6 md:px-10 py-14 flex flex-col items-center text-center gap-4">
           <CrestRC className="w-14 h-14 text-gold-500" />
           <Image
-            src="/images/ralfs-chops-wordmark.png"
+            src="/images/ralfs-chops-wordmark.svg"
             alt="Ralf's Chops"
-            width={422}
-            height={48}
-            className="h-auto w-[220px] md:w-[260px]"
+            width={411}
+            height={33}
+            className="h-auto w-[214px] md:w-[252px]"
           />
           <p className="font-inter text-xs tracking-widest text-paper/40 uppercase">
             {locations.map((l) => l.name).join(" · ") || "Thornhill · Clanton · South · Others"}

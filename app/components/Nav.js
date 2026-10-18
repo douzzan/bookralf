@@ -27,12 +27,12 @@ export default function Nav({ variant = "customer" }) {
       <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
         <Link href={homeHref} className="flex items-center" aria-label="Ralf's Chops — home">
           <Image
-            src="/images/ralfs-chops-wordmark.png"
+            src="/images/ralfs-chops-wordmark.svg"
             alt="Ralf's Chops"
-            width={422}
-            height={48}
+            width={411}
+            height={33}
             priority
-            className="h-auto w-[180px] md:w-[210px]"
+            className="h-auto w-[176px] md:w-[204px]"
           />
         </Link>
 
