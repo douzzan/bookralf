@@ -5,6 +5,7 @@ import { slotsNeeded, getAvailableStartTimes, timeToMinutes, minutesToTime } fro
 import { computeTotalDuration, getMaxTotalQty } from "@/lib/bucketDuration";
 import { notifyBookingRequested } from "@/lib/notifications";
 import { isStaffRequest } from "@/lib/auth";
+import { dropPastStartTimes } from "@/lib/torontoTime";
 
 // GET /api/bookings?phone=xxx           -> a customer's own bookings (public)
 // GET /api/bookings?status=pending      -> admin: all bookings with that status (staff only)
@@ -102,7 +103,7 @@ export async function POST(request) {
       where: { date, status: { in: ["pending", "confirmed"] } },
       select: { startTime: true, endTime: true },
     });
-    const validStarts = getAvailableStartTimes(scheduleDay, existingBookings, totalDurationMin);
+    const validStarts = dropPastStartTimes(date, getAvailableStartTimes(scheduleDay, existingBookings, totalDurationMin));
     if (!validStarts.includes(startTime)) {
       return NextResponse.json(
         { error: "That time is no longer available. Please choose another." },

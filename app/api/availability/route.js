@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { slotsNeeded, getAvailableStartTimes } from "@/lib/slots";
+import { dropPastStartTimes } from "@/lib/torontoTime";
 
 // GET /api/availability?locationId=&date=&durationMin=
 export async function GET(request) {
@@ -28,7 +29,7 @@ export async function GET(request) {
     });
 
     const needed = slotsNeeded(durationMin); // informational only, for "needs N slots" messaging
-    const startTimes = getAvailableStartTimes(scheduleDay, existingBookings, durationMin);
+    const startTimes = dropPastStartTimes(date, getAvailableStartTimes(scheduleDay, existingBookings, durationMin));
 
     return NextResponse.json({
       scheduleDayId: scheduleDay.id,
