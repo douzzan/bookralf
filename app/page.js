@@ -313,7 +313,7 @@ export default function LandingPage() {
             </svg>
           </a>
 
-          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Book Ralf</p>
+          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Ralf&rsquo;s Chops</p>
         </footer>
       </main>
     </>

@@ -205,6 +205,19 @@ export default async function AboutPage() {
             <Link href="/book" className="hover:text-gold-400">Book</Link>
             <Link href="/my-bookings" className="hover:text-gold-400">My Bookings</Link>
           </div>
+          <a
+            href="https://www.instagram.com/ralfschops/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            className="w-10 h-10 rounded-full border border-gold-500/40 flex items-center justify-center text-paper/60 hover:text-gold-400 hover:border-gold-400 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4.2" />
+              <circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </a>
           <p className="font-inter text-[11px] text-paper/25 mt-2">© {new Date().getFullYear()} Ralf&rsquo;s Chops</p>
         </footer>
       </main>

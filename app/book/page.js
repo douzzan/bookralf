@@ -34,8 +34,8 @@ export default function BookingPage() {
 
   const [location, setLocation] = useState(null);
   const [monthCursor, setMonthCursor] = useState(() => {
-    const n = new Date();
-    return { y: n.getFullYear(), m: n.getMonth() };
+    const [y, m] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date()).split("-").map(Number);
+    return { y, m: m - 1 };
   });
   const [date, setDate] = useState(null);
   const [cart, setCart] = useState({}); // serviceId -> qty
@@ -81,7 +81,8 @@ export default function BookingPage() {
   const totalPrice = cartItems.reduce((sum, i) => sum + i.svc.price * i.qty, 0);
   const totalDuration = computeTotalDuration(
     cartItems.map((i) => ({ serviceId: i.serviceId, quantity: i.qty })),
-    services
+    services,
+    brackets
   );
   const totalSlots = Math.ceil(totalDuration / 30) || 0;
 
@@ -509,7 +510,8 @@ function Calendar({ monthCursor, setMonthCursor, availableDateSet, selected, onS
   const first = new Date(y, m, 1);
   const startWeekday = first.getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Today in Toronto (not UTC, which flips to "tomorrow" in the evening)
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());
 
   const cells = [];
   for (let i = 0; i < startWeekday; i++) cells.push(null);

@@ -17,7 +17,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Book Ralf — House-Call Barbering",
+  title: "Ralf's Chops — House-Call Barbering",
   description: "The barbershop chair, brought to your door.",
 };
 
