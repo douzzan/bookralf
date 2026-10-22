@@ -119,3 +119,50 @@ model Notification {
 
   @@index([audience, read])
 }
+
+// ---------------------------------------------------------------------------
+// About page content — all of it editable from the staff "Site Content" page.
+// ---------------------------------------------------------------------------
+
+// One row only (id is always "main"): the "About Ralf" intro text and the
+// optional photo. The photo is stored right here (a small, already-resized
+// JPEG) because Vercel's filesystem is read-only at runtime. photo = null
+// means "no photo" and the About page simply shows text.
+model AboutContent {
+  id           String   @id @default("main")
+  heading      String   @default("About Ralf")
+  intro        String   @default("")
+  photo        Bytes?
+  photoMime    String?
+  updatedAt    DateTime @updatedAt
+}
+
+// "How it works" steps, shown in order.
+model ProcessStep {
+  id          String  @id @default(cuid())
+  title       String
+  description String  @default("")
+  order       Int     @default(0)
+  active      Boolean @default(true)
+}
+
+model Faq {
+  id       String  @id @default(cuid())
+  question String
+  answer   String  @default("")
+  order    Int     @default(0)
+  active   Boolean @default(true) // false = hidden from the public page
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @default("")
+  postedOn  String   // "YYYY-MM-DD" — the date shown on the post (editable)
+  published Boolean  @default(true)
+  pinned    Boolean  @default(false)
+  showUntil String?  // "YYYY-MM-DD" — optional; hidden after this date
+  createdAt DateTime @default(now())
+
+  @@index([published, pinned])
+}

@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const { seedAboutIfEmpty } = require("../lib/aboutDefaults");
 const prisma = new PrismaClient();
 
 async function main() {
@@ -43,6 +44,10 @@ async function main() {
       await prisma.bulkHaircutBracket.create({ data: b });
     }
   }
+
+  // About page starter content (only fills in what is still empty).
+  const about = await seedAboutIfEmpty(prisma);
+  console.log("About page starter content:", about);
 
   console.log("Seed complete.");
 }

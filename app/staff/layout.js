@@ -46,7 +46,7 @@ export default function StaffLayout({ children }) {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
         <form onSubmit={handleSubmit} className="bg-ink-800 border border-ink-700 rounded-xl p-6 w-full max-w-sm">
-          <div className="text-gold-400 text-lg font-semibold mb-1">✂ Book Ralf — Staff</div>
+          <div className="text-gold-400 text-lg font-semibold mb-1">✂ Ralf's Chops — Staff</div>
           <p className="text-gray-400 text-sm mb-4">Enter the admin password to continue.</p>
           <input
             type="password"

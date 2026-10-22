@@ -8,6 +8,7 @@ import HeroMark from "./components/HeroMark";
 import ParallaxImage from "./components/ParallaxImage";
 import Image from "next/image";
 import CrestRC from "./components/CrestRC";
+import AnnouncementBanner from "./components/AnnouncementBanner";
 import { safeFetchJson } from "../lib/safeFetch";
 
 const FEATURES = [
@@ -65,6 +66,7 @@ export default function LandingPage() {
     <>
       <div className="grain-overlay" />
       <Nav variant="customer" />
+      <AnnouncementBanner />
 
       <p className="hidden lg:block fixed left-3 top-1/2 -translate-y-1/2 -rotate-90 origin-left font-inter text-[10px] tracking-[0.4em] text-paper/25 uppercase z-20 pointer-events-none">
         House-Call Barbering — Est. 2019
@@ -290,6 +292,9 @@ export default function LandingPage() {
             height={33}
             className="h-auto w-[214px] md:w-[252px]"
           />
+          <Link href="/about" className="font-inter text-xs tracking-widest text-gold-400 uppercase hover:text-gold-500">
+            About Ralf · How it works · FAQ
+          </Link>
           <p className="font-inter text-xs tracking-widest text-paper/40 uppercase">
             {locations.map((l) => l.name).join(" · ") || "Thornhill · Clanton · South · Others"}
           </p>
@@ -308,7 +313,7 @@ export default function LandingPage() {
             </svg>
           </a>
 
-          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Ralf's Chops</p>
+          <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Book Ralf</p>
         </footer>
       </main>
     </>

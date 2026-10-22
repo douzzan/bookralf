@@ -7,6 +7,7 @@ import Image from "next/image";
 const CUSTOMER_LINKS = [
   { href: "/book", label: "Book an Appointment" },
   { href: "/my-bookings", label: "My Bookings" },
+  { href: "/about", label: "About" },
 ];
 
 const STAFF_LINKS = [
@@ -15,6 +16,7 @@ const STAFF_LINKS = [
   { href: "/staff/pending", label: "Pending Requests" },
   { href: "/staff/bookings", label: "All Bookings" },
   { href: "/staff/notifications", label: "Notifications" },
+  { href: "/staff/content", label: "Site Content" },
 ];
 
 export default function Nav({ variant = "customer" }) {

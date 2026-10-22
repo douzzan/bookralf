@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Nav from "../components/Nav";
+import AnnouncementBanner from "../components/AnnouncementBanner";
 import { safeFetchJson } from "../../lib/safeFetch";
 import { computeTotalDuration, getMaxTotalQty } from "../../lib/bucketDuration";
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -184,6 +185,7 @@ export default function BookingPage() {
   return (
     <>
       <Nav variant="customer" />
+      <AnnouncementBanner />
       <main className="max-w-md md:max-w-2xl mx-auto px-4 py-6">
         <h1 className="text-2xl md:text-3xl font-bold">Book an Appointment</h1>
         <p className="text-gray-400 mb-4">Choose your area, date, and time — we'll come to you.</p>
