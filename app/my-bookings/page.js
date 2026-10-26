@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Nav from "../components/Nav";
 import { safeFetchJson } from "../../lib/safeFetch";
+import { googleCalendarUrl } from "../../lib/calendar";
 
 const STATUS_STYLES = {
   pending: "text-gold-400 border-gold-500/50 bg-gold-500/10",
@@ -152,11 +153,31 @@ export default function MyBookingsPage() {
                     <span className="text-gray-400">📍 {b.location.name}</span>
                   </div>
                   <div className="text-sm text-gray-500 mb-3">📍 {b.address}</div>
-                  {["pending", "confirmed"].includes(b.status) && (
-                    <button onClick={() => cancelBooking(b.id)} className="text-red-400 border border-red-800 rounded-lg px-4 py-2 text-sm">
-                      Cancel Booking
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {b.status === "confirmed" && (
+                      <>
+                        <a
+                          href={googleCalendarUrl(b, typeof window !== "undefined" ? window.location.origin : "")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gold-400 border border-gold-600/60 rounded-lg px-4 py-2 text-sm"
+                        >
+                          📅 Google Calendar
+                        </a>
+                        <a
+                          href={`/api/bookings/${b.id}/calendar`}
+                          className="text-gold-400 border border-gold-600/60 rounded-lg px-4 py-2 text-sm"
+                        >
+                          📅 Apple / Outlook
+                        </a>
+                      </>
+                    )}
+                    {["pending", "confirmed"].includes(b.status) && (
+                      <button onClick={() => cancelBooking(b.id)} className="text-red-400 border border-red-800 rounded-lg px-4 py-2 text-sm">
+                        Cancel Booking
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
