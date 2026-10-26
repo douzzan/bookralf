@@ -80,6 +80,7 @@ model Booking {
   totalDurationMin Int
   totalSlots       Int
   status           String    @default("pending") // pending | confirmed | declined | cancelled | completed
+  cancelledBy      String?   // "client" | "staff" — who cancelled; null on older rows = staff
   reminderSentAt   DateTime? // set once the day-of reminder has gone out — prevents double-sends
   invoiceNumber    String?   // e.g. "INV-2026-0042" — assigned once, on first send, then reused on resend
   invoicedAt       DateTime? // when the invoice was first sent
