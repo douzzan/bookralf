@@ -3,6 +3,7 @@ import Image from "next/image";
 import Nav from "../components/Nav";
 import Reveal from "../components/Reveal";
 import CrestRC from "../components/CrestRC";
+import PoweredBy from "../components/PoweredBy";
 import AnnouncementBanner from "../components/AnnouncementBanner";
 import { getAboutPublic, hasPhoto } from "@/lib/aboutData";
 
@@ -219,6 +220,7 @@ export default async function AboutPage() {
             </svg>
           </a>
           <p className="font-inter text-[11px] text-paper/25 mt-2">© {new Date().getFullYear()} Ralf&rsquo;s Chops</p>
+          <PoweredBy />
         </footer>
       </main>
     </>

@@ -8,6 +8,7 @@ import HeroMark from "./components/HeroMark";
 import ParallaxImage from "./components/ParallaxImage";
 import Image from "next/image";
 import CrestRC from "./components/CrestRC";
+import PoweredBy from "./components/PoweredBy";
 import AnnouncementBanner from "./components/AnnouncementBanner";
 import { safeFetchJson } from "../lib/safeFetch";
 
@@ -314,6 +315,7 @@ export default function LandingPage() {
           </a>
 
           <p className="font-inter text-[11px] text-paper/25 mt-4">© {new Date().getFullYear()} Ralf&rsquo;s Chops</p>
+          <PoweredBy />
         </footer>
       </main>
     </>
