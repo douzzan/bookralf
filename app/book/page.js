@@ -64,7 +64,12 @@ export default function BookingPage() {
     });
   }, [location]);
 
-  const availableDateSet = useMemo(() => new Set(scheduleDays.map((d) => d.date)), [scheduleDays]);
+  // A date is "full" when every schedule entry on it is full (see /api/schedule).
+  const availableDateSet = useMemo(() => new Set(scheduleDays.filter((d) => !d.full).map((d) => d.date)), [scheduleDays]);
+  const fullDateSet = useMemo(() => {
+    const open = new Set(scheduleDays.filter((d) => !d.full).map((d) => d.date));
+    return new Set(scheduleDays.filter((d) => d.full && !open.has(d.date)).map((d) => d.date));
+  }, [scheduleDays]);
 
   const totalQty = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
   const MAX_TOTAL_QTY = getMaxTotalQty(brackets);
@@ -233,6 +238,7 @@ export default function BookingPage() {
               monthCursor={monthCursor}
               setMonthCursor={setMonthCursor}
               availableDateSet={availableDateSet}
+              fullDateSet={fullDateSet}
               selected={date}
               onSelect={(d) => {
                 setDate(d);
@@ -240,7 +246,11 @@ export default function BookingPage() {
               }}
             />
             {availableDateSet.size === 0 && (
-              <p className="text-sm text-gray-500 mt-3">No open days scheduled for this area yet.</p>
+              <p className="text-sm text-gray-500 mt-3">
+                {fullDateSet.size > 0
+                  ? "Every scheduled day for this area is fully booked right now. Please check back soon."
+                  : "No open days scheduled for this area yet."}
+              </p>
             )}
           </div>
         )}
@@ -505,7 +515,7 @@ function StepIndicator({ step }) {
   );
 }
 
-function Calendar({ monthCursor, setMonthCursor, availableDateSet, selected, onSelect }) {
+function Calendar({ monthCursor, setMonthCursor, availableDateSet, fullDateSet, selected, onSelect }) {
   const { y, m } = monthCursor;
   const first = new Date(y, m, 1);
   const startWeekday = first.getDay();
@@ -541,6 +551,7 @@ function Calendar({ monthCursor, setMonthCursor, availableDateSet, selected, onS
           const dateStr = toDateStr(y, m, d);
           const enabled = availableDateSet.has(dateStr) && dateStr >= todayStr;
           const isSelected = selected === dateStr;
+          const isFull = !enabled && fullDateSet.has(dateStr) && dateStr >= todayStr;
           return (
             <button
               key={i}
@@ -554,7 +565,14 @@ function Calendar({ monthCursor, setMonthCursor, availableDateSet, selected, onS
                   : "text-gray-700"
               }`}
             >
-              {d}
+              {isFull ? (
+                <span className="flex flex-col items-center leading-none">
+                  <span className="text-gray-600">{d}</span>
+                  <span className="text-[8px] uppercase tracking-wide text-gray-500 mt-0.5">Full</span>
+                </span>
+              ) : (
+                d
+              )}
             </button>
           );
         })}
