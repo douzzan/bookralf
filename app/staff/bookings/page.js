@@ -24,6 +24,8 @@ const STATUS_LABELS = {
   client_cancelled: "Client cancelled",
 };
 
+const PAYMENT_LABELS = { cash: "Cash", etransfer: "E-transfer" };
+
 const STATUS_FILTERS = ["pending", "confirmed", "completed", "staff_cancelled", "client_cancelled"];
 
 function bucketOf(b) {
@@ -183,6 +185,34 @@ export default function AllBookingsPage() {
       setSelected(null);
       load();
     }
+  }
+
+  // Cash / e-transfer popup: used both to complete a booking and to correct
+  // the method on one that's already completed.
+  const [payPrompt, setPayPrompt] = useState(null); // { id, mode: "complete" | "edit" }
+  async function choosePayment(method) {
+    if (!payPrompt) return;
+    setBusy(true);
+    setError("");
+    const body =
+      payPrompt.mode === "complete"
+        ? { status: "completed", actor: "admin", paymentMethod: method }
+        : { paymentMethod: method };
+    const res = await fetch(`/api/bookings/${payPrompt.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error || "Could not save the payment method.");
+      setPayPrompt(null);
+      return;
+    }
+    setSelected(payPrompt.mode === "complete" ? null : data);
+    setPayPrompt(null);
+    load();
   }
 
   async function sendInvoice(id) {
@@ -435,7 +465,7 @@ export default function AllBookingsPage() {
               <div className="flex gap-3">
                 <button
                   disabled={busy}
-                  onClick={() => setStatus(selected.id, "completed")}
+                  onClick={() => setPayPrompt({ id: selected.id, mode: "complete" })}
                   className="flex-1 text-blue-400 border border-blue-800 rounded-lg px-4 py-2 text-sm disabled:opacity-60"
                 >
                   Mark Completed
@@ -446,6 +476,23 @@ export default function AllBookingsPage() {
                   className="flex-1 text-red-400 border border-red-800 rounded-lg px-4 py-2 text-sm disabled:opacity-60"
                 >
                   Cancel Booking
+                </button>
+              </div>
+            )}
+
+            {selected.status === "completed" && (
+              <div className="flex items-center justify-between text-sm mb-4">
+                <span className="text-gray-400">
+                  Paid by{" "}
+                  <span className="text-gray-200 font-medium">
+                    {PAYMENT_LABELS[selected.paymentMethod] || "Unspecified"}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setPayPrompt({ id: selected.id, mode: "edit" })}
+                  className="text-gold-400 underline text-sm"
+                >
+                  Change
                 </button>
               </div>
             )}
@@ -487,6 +534,40 @@ export default function AllBookingsPage() {
                 {invoiceMsg && <p className="text-xs text-gray-400 mt-2">{invoiceMsg}</p>}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {payPrompt && (
+        <div className="fixed inset-0 bg-black/80 flex items-end md:items-center justify-center z-50 px-4" onClick={() => setPayPrompt(null)}>
+          <div className="bg-ink-900 border border-ink-700 rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-1">
+              <h2 className="text-lg font-semibold">{payPrompt.mode === "complete" ? "How was it paid?" : "Change payment method"}</h2>
+              <button onClick={() => setPayPrompt(null)} className="text-gray-400" aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-5">
+              {payPrompt.mode === "complete"
+                ? "Pick the payment method to mark this booking completed and paid."
+                : "Pick the correct payment method for this booking."}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                disabled={busy}
+                onClick={() => choosePayment("cash")}
+                className="py-4 rounded-xl border border-gold-600/60 text-gold-300 font-semibold hover:bg-gold-500/10 disabled:opacity-60"
+              >
+                💵 Cash
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => choosePayment("etransfer")}
+                className="py-4 rounded-xl border border-gold-600/60 text-gold-300 font-semibold hover:bg-gold-500/10 disabled:opacity-60"
+              >
+                📲 E-transfer
+              </button>
+            </div>
           </div>
         </div>
       )}

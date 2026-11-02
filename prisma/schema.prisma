@@ -85,6 +85,7 @@ model Booking {
   invoiceNumber    String?   // e.g. "INV-2026-0042" — assigned once, on first send, then reused on resend
   invoicedAt       DateTime? // when the invoice was first sent
   invoicePaid      Boolean   @default(false) // staff-toggled, purely informational — no payment processing involved
+  paymentMethod    String?   // "cash" | "etransfer" — set when Ralf marks the booking completed; null on older rows = unspecified
   items            BookingServiceItem[]
   notifications    Notification[]
   createdAt        DateTime  @default(now())
