@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isStaffRequest } from "@/lib/auth";
 import { computeClientMetrics, periodTotals, percentChange } from "@/lib/reportMetrics";
+import { getTorontoNow } from "@/lib/torontoTime";
 
 // GET /api/stats?range=week|month|year|all — staff only.
 // Scoped to COMPLETED bookings only — that's the only status that
@@ -28,6 +29,15 @@ function dayLabel(d) {
 
 const WINDOW_DAYS = { week: 7, month: 30, year: 365 };
 
+// The income fields Ralf can plot / total. Service income is split by how it
+// was paid; tips are entered per day and are kept separate from service income.
+// "serviceUnspecified" = completed before payment methods were recorded.
+const FIELD_KEYS = ["serviceCash", "serviceEtransfer", "serviceUnspecified", "tipsCash", "tipsEtransfer"];
+const emptyFields = () => Object.fromEntries(FIELD_KEYS.map((k) => [k, 0]));
+function serviceFieldOf(b) {
+  return b.paymentMethod === "cash" ? "serviceCash" : b.paymentMethod === "etransfer" ? "serviceEtransfer" : "serviceUnspecified";
+}
+
 export async function GET(request) {
   if (!isStaffRequest(request)) {
     return NextResponse.json({ error: "Staff login required." }, { status: 401 });
@@ -36,8 +46,9 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "month";
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // "Today" in Toronto (the server runs in UTC, which flips to tomorrow in the evening)
+    const [ty, tm, td] = getTorontoNow().date.split("-").map(Number);
+    const today = new Date(ty, tm - 1, td);
     const todayStr = toDateStr(today);
 
     let cutoffStr = null;
@@ -82,42 +93,64 @@ export async function GET(request) {
     }
     const byLocation = Array.from(locationMap.values()).sort((a, b) => b.revenue - a.revenue);
 
+    // Tips entered by hand per day (cash / e-transfer), within the same window
+    const dayTips = await prisma.dayTips.findMany({ where: cutoffStr ? { date: { gte: cutoffStr } } : {} });
+
     // Time series — daily buckets for week/month, monthly buckets for year/all
-    let series = [];
-    if (range === "week" || range === "month") {
-      const numDays = WINDOW_DAYS[range];
-      const dayTotals = new Map();
-      for (const b of bookings) {
-        dayTotals.set(b.date, (dayTotals.get(b.date) || 0) + b.totalPrice);
-      }
-      for (let i = numDays - 1; i >= 0; i--) {
+    const daily = range === "week" || range === "month";
+    const buckets = []; // [{ key, label }]
+    if (daily) {
+      for (let i = WINDOW_DAYS[range] - 1; i >= 0; i--) {
         const d = addDays(today, -i);
-        const dStr = toDateStr(d);
-        series.push({ label: dayLabel(d), value: dayTotals.get(dStr) || 0 });
+        buckets.push({ key: toDateStr(d), label: dayLabel(d) });
       }
     } else {
-      // year / all — monthly buckets
-      const monthTotals = new Map();
-      for (const b of bookings) {
-        const monthKey = b.date.slice(0, 7); // "YYYY-MM"
-        monthTotals.set(monthKey, (monthTotals.get(monthKey) || 0) + b.totalPrice);
-      }
       let monthCursor;
       if (range === "year") {
         monthCursor = new Date(today.getFullYear(), today.getMonth() - 11, 1);
       } else {
-        const earliest = bookings[0]?.date;
+        const dates = [bookings[0]?.date, dayTips[0]?.date].filter(Boolean).concat(dayTips.map((t) => t.date));
+        const earliest = dates.sort()[0];
         monthCursor = earliest
           ? new Date(Number(earliest.slice(0, 4)), Number(earliest.slice(5, 7)) - 1, 1)
           : new Date(today.getFullYear(), today.getMonth(), 1);
       }
       const endMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       while (monthCursor <= endMonth) {
-        const key = `${monthCursor.getFullYear()}-${pad(monthCursor.getMonth() + 1)}`;
-        series.push({ label: monthLabel(monthCursor), value: monthTotals.get(key) || 0 });
+        buckets.push({
+          key: `${monthCursor.getFullYear()}-${pad(monthCursor.getMonth() + 1)}`,
+          label: monthLabel(monthCursor),
+        });
         monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1);
       }
     }
+    const bucketOf = (date) => (daily ? date : date.slice(0, 7));
+    const agg = new Map(buckets.map((b) => [b.key, emptyFields()]));
+    const totals = emptyFields();
+    for (const b of bookings) {
+      const f = serviceFieldOf(b);
+      totals[f] += b.totalPrice;
+      const a = agg.get(bucketOf(b.date));
+      if (a) a[f] += b.totalPrice;
+    }
+    for (const t of dayTips) {
+      totals.tipsCash += t.cashTips;
+      totals.tipsEtransfer += t.etransferTips;
+      const a = agg.get(bucketOf(t.date));
+      if (a) {
+        a.tipsCash += t.cashTips;
+        a.tipsEtransfer += t.etransferTips;
+      }
+    }
+    // The original "service revenue" line (all service income, however it was paid)
+    const series = buckets.map((b) => {
+      const a = agg.get(b.key);
+      return { label: b.label, value: a.serviceCash + a.serviceEtransfer + a.serviceUnspecified };
+    });
+    // One series per income field, for the multi-line chart
+    const seriesByField = Object.fromEntries(
+      FIELD_KEYS.map((k) => [k, buckets.map((b) => ({ label: b.label, value: agg.get(b.key)[k] }))])
+    );
 
     // Previous period (same length, immediately before this one) — powers
     // both the % change summary and client retention. "all" has no
@@ -157,6 +190,8 @@ export async function GET(request) {
       byService,
       byLocation,
       series,
+      seriesByField,
+      totals,
       comparison,
       clientMetrics,
     });

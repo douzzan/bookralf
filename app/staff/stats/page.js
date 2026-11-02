@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Nav from "../../components/Nav";
 import LineChart from "../../components/LineChart";
 import { safeFetchJson } from "../../../lib/safeFetch";
@@ -12,6 +12,18 @@ const RANGES = [
   { key: "all", label: "All Time" },
 ];
 
+// Income fields that can be plotted / totalled. Service income is split by how
+// it was paid; tips are separate. "Unspecified" only appears when the range has
+// bookings completed before payment methods were recorded.
+const FIELDS = [
+  { key: "serviceCash", label: "Services – Cash", color: "#cf9b42" },
+  { key: "serviceEtransfer", label: "Services – E-transfer", color: "#6ea8d9" },
+  { key: "serviceUnspecified", label: "Services – Unspecified", color: "#9c8a6e", optional: true },
+  { key: "tipsCash", label: "Tips – Cash", color: "#7bc18a" },
+  { key: "tipsEtransfer", label: "Tips – E-transfer", color: "#c58ad9" },
+];
+const COMBINED_COLOR = "#e6bd6e";
+
 export default function StatsPage() {
   const [range, setRange] = useState("month");
   const [data, setData] = useState(null);
@@ -19,6 +31,35 @@ export default function StatsPage() {
   const [reportPeriod, setReportPeriod] = useState("month");
   const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [reportYear, setReportYear] = useState(() => new Date().getFullYear());
+  // Which income fields are shown on the chart and added up in the totals card.
+  // Default = all service income, combined — the same single line as before.
+  const [picked, setPicked] = useState(["serviceCash", "serviceEtransfer", "serviceUnspecified"]);
+  const [combine, setCombine] = useState(true);
+
+  const fields = useMemo(
+    () => FIELDS.filter((f) => !f.optional || (data && data.totals && data.totals[f.key] > 0)),
+    [data]
+  );
+  const activePicked = picked.filter((k) => fields.some((f) => f.key === k));
+  function togglePicked(key) {
+    setPicked((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]));
+  }
+
+  const chart = useMemo(() => {
+    if (!data || !data.seriesByField) return null;
+    const labels = data.series.map((s) => s.label);
+    const chosen = fields.filter((f) => activePicked.includes(f.key));
+    if (chosen.length === 0) return { labels, lines: [] };
+    if (combine && chosen.length > 1) {
+      const values = labels.map((_, i) => chosen.reduce((sum, f) => sum + data.seriesByField[f.key][i].value, 0));
+      return { labels, lines: [{ name: "Combined", color: COMBINED_COLOR, values }] };
+    }
+    return {
+      labels,
+      lines: chosen.map((f) => ({ name: f.label, color: f.color, values: data.seriesByField[f.key].map((p) => p.value) })),
+    };
+  }, [data, fields, activePicked.join(","), combine]);
+  const selectedTotal = data && data.totals ? activePicked.reduce((sum, k) => sum + (data.totals[k] || 0), 0) : 0;
 
   useEffect(() => {
     setData(null);
@@ -140,18 +181,84 @@ export default function StatsPage() {
             </div>
 
             <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 md:p-6 mb-6">
-              <h2 className="font-semibold mb-4">Revenue Over Time</h2>
-              <LineChart data={data.series} />
+              <h2 className="font-semibold mb-3">Revenue Over Time</h2>
+              <FieldPicker
+                fields={fields}
+                picked={activePicked}
+                onToggle={togglePicked}
+                combine={combine}
+                onCombine={setCombine}
+              />
+              {chart && chart.lines.length > 0 ? (
+                <LineChart labels={chart.labels} lines={chart.lines} />
+              ) : (
+                <p className="text-gray-500 text-sm text-center py-12">Pick at least one field above to plot.</p>
+              )}
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 mb-6">
               <Breakdown title="By Service" rows={data.byService} />
               <Breakdown title="By Location" rows={data.byLocation} />
+            </div>
+
+            <div className="bg-ink-800 border border-ink-700 rounded-xl p-4 md:p-6">
+              <h2 className="font-semibold mb-1">Totals for Selected Fields</h2>
+              <p className="text-gray-500 text-xs mb-3">
+                Choose any combination — they are added together for the range selected above. Tips are kept separate from service income.
+              </p>
+              <FieldPicker fields={fields} picked={activePicked} onToggle={togglePicked} />
+              <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-3">
+                <div>
+                  <div className="text-3xl font-bold text-gold-400">${selectedTotal.toFixed(2)}</div>
+                  <div className="text-gray-400 text-sm">{activePicked.length > 1 ? "Combined total" : "Total"}</div>
+                </div>
+                <div className="text-sm text-gray-400 space-y-0.5">
+                  {fields
+                    .filter((f) => activePicked.includes(f.key))
+                    .map((f) => (
+                      <div key={f.key}>
+                        <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ background: f.color }} />
+                        {f.label}: <span className="text-gray-200">${(data.totals[f.key] || 0).toFixed(2)}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
             </div>
           </>
         )}
       </main>
     </>
+  );
+}
+
+function FieldPicker({ fields, picked, onToggle, combine, onCombine }) {
+  return (
+    <div className="mb-4">
+      <div className="flex flex-wrap gap-2">
+        {fields.map((f) => {
+          const on = picked.includes(f.key);
+          return (
+            <button
+              key={f.key}
+              onClick={() => onToggle(f.key)}
+              aria-pressed={on}
+              className={`text-xs px-3 py-1.5 rounded-full border flex items-center gap-2 ${
+                on ? "border-gold-500 text-gray-100 bg-gold-500/10" : "border-ink-600 text-gray-500"
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: on ? f.color : "transparent", border: `1.5px solid ${f.color}` }} />
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+      {onCombine && (
+        <label className="mt-3 inline-flex items-center gap-2 text-xs text-gray-300">
+          <input type="checkbox" className="w-auto" checked={combine} onChange={(e) => onCombine(e.target.checked)} />
+          Combine selected fields into one line
+        </label>
+      )}
+    </div>
   );
 }
 
