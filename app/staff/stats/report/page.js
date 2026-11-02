@@ -26,14 +26,16 @@ function ReportContent() {
   const searchParams = useSearchParams();
   const period = searchParams.get("period") === "year" ? "year" : "month";
   const value = searchParams.get("value");
+  const fieldsParam = searchParams.get("fields");
 
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!value) return;
-    safeFetchJson(`/api/stats/report?period=${period}&value=${value}`, { onSuccess: setData, onError: setError });
-  }, [period, value]);
+    const f = fieldsParam === null ? "" : `&fields=${encodeURIComponent(fieldsParam)}`;
+    safeFetchJson(`/api/stats/report?period=${period}&value=${value}${f}`, { onSuccess: setData, onError: setError });
+  }, [period, value, fieldsParam]);
 
   if (!value) {
     return <p className="p-8 text-center text-gray-600">Missing report period. Go back to Stats and try again.</p>;
@@ -62,7 +64,7 @@ function ReportContent() {
           {/* Header */}
           <div className="flex justify-between items-start border-b-2 border-gray-900 pb-4 mb-6">
             <div>
-              <div className="text-2xl font-serif italic">Book Ralf</div>
+              <div className="text-2xl font-serif italic">Ralf's Chops</div>
               <div className="text-sm text-gray-500">House-Call Barbering</div>
             </div>
             <div className="text-right">
@@ -70,13 +72,57 @@ function ReportContent() {
               <div className="text-sm text-gray-500">{data.label}</div>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mb-8">Generated {formatGeneratedOn()}</p>
+          <p className="text-xs text-gray-400 mb-1">Generated {formatGeneratedOn()}</p>
+          <p className="text-xs text-gray-500 mb-8">Includes: {includedText(data.fields)}</p>
 
           {/* Summary */}
           <div className="grid grid-cols-3 gap-4 mb-8">
-            <SummaryBox label="Total Revenue" value={`$${data.totalRevenue.toFixed(2)}`} />
+            <SummaryBox label="Service Revenue" value={`$${data.totalRevenue.toFixed(2)}`} />
             <SummaryBox label="Completed Bookings" value={data.completedCount} />
             <SummaryBox label="Average per Booking" value={`$${data.avgPerBooking.toFixed(2)}`} />
+          </div>
+
+          {/* Income by method — tips are their own line, never part of service revenue */}
+          <div className="mb-8 break-inside-avoid">
+            <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-2">Income Summary</h3>
+            <table className="w-full text-sm">
+              <tbody>
+                {Object.entries(data.serviceByMethod).map(([k, v]) => (
+                  <tr key={k} className="border-b border-gray-200">
+                    <td className="py-1.5">{FIELD_LABELS[k]}</td>
+                    <td className="py-1.5 text-right font-medium">${v.toFixed(2)}</td>
+                  </tr>
+                ))}
+                <tr className="border-b border-gray-300 font-semibold">
+                  <td className="py-1.5">Service revenue</td>
+                  <td className="py-1.5 text-right">${data.totalRevenue.toFixed(2)}</td>
+                </tr>
+                {data.tips.selected && (
+                  <>
+                    {data.tips.cash !== null && (
+                      <tr className="border-b border-gray-200">
+                        <td className="py-1.5">Tips – Cash</td>
+                        <td className="py-1.5 text-right font-medium">${data.tips.cash.toFixed(2)}</td>
+                      </tr>
+                    )}
+                    {data.tips.etransfer !== null && (
+                      <tr className="border-b border-gray-200">
+                        <td className="py-1.5">Tips – E-transfer</td>
+                        <td className="py-1.5 text-right font-medium">${data.tips.etransfer.toFixed(2)}</td>
+                      </tr>
+                    )}
+                    <tr className="border-b border-gray-300 font-semibold">
+                      <td className="py-1.5">Tips (separate from services)</td>
+                      <td className="py-1.5 text-right">${data.tips.total.toFixed(2)}</td>
+                    </tr>
+                    <tr className="border-t-2 border-gray-900 font-bold">
+                      <td className="py-2">Total incl. tips</td>
+                      <td className="py-2 text-right">${data.grandTotal.toFixed(2)}</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
           </div>
 
           {/* Performance summary */}
@@ -129,6 +175,9 @@ function ReportContent() {
                   <tr key={i} className="border-b border-gray-200">
                     <td className="py-1.5">{s.label}</td>
                     <td className="py-1.5 text-right font-medium">${s.revenue.toFixed(2)}</td>
+                    {data.tips.selected && (
+                      <td className="py-1.5 text-right text-gray-500 w-28">{s.tips > 0 ? `+ $${s.tips.toFixed(2)} tips` : ""}</td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -148,6 +197,7 @@ function ReportContent() {
                     <th className="py-1.5 pr-2">Customer</th>
                     <th className="py-1.5 pr-2">Service(s)</th>
                     <th className="py-1.5 pr-2">Location</th>
+                    <th className="py-1.5 pr-2">Paid by</th>
                     <th className="py-1.5 text-right">Amount</th>
                   </tr>
                 </thead>
@@ -158,14 +208,15 @@ function ReportContent() {
                       <td className="py-1.5 pr-2">{t.customerName}</td>
                       <td className="py-1.5 pr-2">{t.services}</td>
                       <td className="py-1.5 pr-2">{t.location}</td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap">{t.paymentMethod}</td>
                       <td className="py-1.5 text-right font-medium">${t.amount.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-gray-900 font-semibold">
-                    <td colSpan={4} className="py-2">
-                      Total
+                    <td colSpan={5} className="py-2">
+                      Total services
                     </td>
                     <td className="py-2 text-right">${data.totalRevenue.toFixed(2)}</td>
                   </tr>
@@ -188,6 +239,18 @@ function ReportContent() {
       `}</style>
     </div>
   );
+}
+
+const FIELD_LABELS = {
+  serviceCash: "Services – Cash",
+  serviceEtransfer: "Services – E-transfer",
+  serviceUnspecified: "Services – Unspecified",
+  tipsCash: "Tips – Cash",
+  tipsEtransfer: "Tips – E-transfer",
+};
+
+function includedText(fields) {
+  return fields.length ? fields.map((f) => FIELD_LABELS[f]).join(", ") : "nothing selected";
 }
 
 function SummaryBox({ label, value }) {

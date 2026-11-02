@@ -24,6 +24,14 @@ const FIELDS = [
 ];
 const COMBINED_COLOR = "#e6bd6e";
 
+const REPORT_FIELDS = [
+  { key: "serviceCash", label: "Services – Cash" },
+  { key: "serviceEtransfer", label: "Services – E-transfer" },
+  { key: "serviceUnspecified", label: "Services – Unspecified" },
+  { key: "tipsCash", label: "Tips – Cash" },
+  { key: "tipsEtransfer", label: "Tips – E-transfer" },
+];
+
 export default function StatsPage() {
   const [range, setRange] = useState("month");
   const [data, setData] = useState(null);
@@ -31,6 +39,10 @@ export default function StatsPage() {
   const [reportPeriod, setReportPeriod] = useState("month");
   const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [reportYear, setReportYear] = useState(() => new Date().getFullYear());
+  // Which income to include in the report (services by payment method; tips separate)
+  const [reportFields, setReportFields] = useState(REPORT_FIELDS.map((f) => f.key));
+  const toggleReportField = (k) =>
+    setReportFields((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
   // Which income fields are shown on the chart and added up in the totals card.
   // Default = all service income, combined — the same single line as before.
   const [picked, setPicked] = useState(["serviceCash", "serviceEtransfer", "serviceUnspecified"]);
@@ -126,13 +138,33 @@ export default function StatsPage() {
             )}
 
             <a
-              href={`/staff/stats/report?period=${reportPeriod}&value=${reportPeriod === "month" ? reportMonth : reportYear}`}
+              href={`/staff/stats/report?period=${reportPeriod}&value=${reportPeriod === "month" ? reportMonth : reportYear}&fields=${reportFields.join(",")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-gold-500 hover:bg-gold-600 text-ink-950 font-semibold text-sm px-4 py-2 rounded-lg"
             >
               🖨 Generate Report
             </a>
+          </div>
+          <div className="mt-4">
+            <div className="text-xs text-gray-400 mb-2">Include in report</div>
+            <div className="flex flex-wrap gap-2">
+              {REPORT_FIELDS.map((f) => {
+                const on = reportFields.includes(f.key);
+                return (
+                  <label
+                    key={f.key}
+                    className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border cursor-pointer ${
+                      on ? "border-gold-500 text-gray-100" : "border-ink-600 text-gray-500"
+                    }`}
+                  >
+                    <input type="checkbox" checked={on} onChange={() => toggleReportField(f.key)} className="w-auto" />
+                    {f.label}
+                  </label>
+                );
+              })}
+            </div>
+            {reportFields.length === 0 && <p className="text-xs text-red-400 mt-2">Pick at least one to include.</p>}
           </div>
         </div>
 
