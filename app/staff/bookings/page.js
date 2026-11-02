@@ -86,6 +86,89 @@ function shortHour(m) {
   return `${h12}${h >= 12 ? "p" : "a"}`;
 }
 
+function money(n) {
+  return `$${Number(n || 0).toFixed(2).replace(/\.00$/, "")}`;
+}
+
+// One day's tip entry: two fields (cash / e-transfer), saved when the field
+// loses focus or Enter is pressed.
+function TipsCell({ date, tip, onSave, compact }) {
+  const [cash, setCash] = useState("");
+  const [etr, setEtr] = useState("");
+  const [state, setState] = useState("idle"); // idle | saving | saved | error
+
+  useEffect(() => {
+    setCash(tip && tip.cashTips ? String(tip.cashTips) : "");
+    setEtr(tip && tip.etransferTips ? String(tip.etransferTips) : "");
+    setState("idle");
+  }, [tip, date]);
+
+  async function commit() {
+    const savedCash = tip ? tip.cashTips : 0;
+    const savedEtr = tip ? tip.etransferTips : 0;
+    const nc = Number(cash || 0);
+    const ne = Number(etr || 0);
+    if (nc === savedCash && ne === savedEtr) return;
+    if (!Number.isFinite(nc) || !Number.isFinite(ne) || nc < 0 || ne < 0) {
+      setState("error");
+      return;
+    }
+    setState("saving");
+    const ok = await onSave(date, nc, ne);
+    setState(ok ? "saved" : "error");
+  }
+
+  const field = "!py-1 !px-2 !text-xs !rounded-md";
+  const keyHandler = (e) => {
+    if (e.key === "Enter") e.currentTarget.blur();
+  };
+
+  if (compact) {
+    const total = (tip?.cashTips || 0) + (tip?.etransferTips || 0);
+    return <div className="text-[9px] text-center text-gold-300 py-1">{total > 0 ? money(total) : "–"}</div>;
+  }
+
+  return (
+    <div className="p-1.5 space-y-1">
+      <label className="block">
+        <span className="block text-[9px] uppercase tracking-wide text-gray-500">Cash tips</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          value={cash}
+          onChange={(e) => setCash(e.target.value)}
+          onBlur={commit}
+          onKeyDown={keyHandler}
+          className={field}
+        />
+      </label>
+      <label className="block">
+        <span className="block text-[9px] uppercase tracking-wide text-gray-500">E-transfer tips</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          value={etr}
+          onChange={(e) => setEtr(e.target.value)}
+          onBlur={commit}
+          onKeyDown={keyHandler}
+          className={field}
+        />
+      </label>
+      <div className="h-3 text-[10px] text-center">
+        {state === "saving" && <span className="text-gray-500">Saving…</span>}
+        {state === "saved" && <span className="text-emerald-400">Saved ✓</span>}
+        {state === "error" && <span className="text-red-400">Not saved</span>}
+      </div>
+    </div>
+  );
+}
+
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
@@ -114,6 +197,7 @@ export default function AllBookingsPage() {
   }
   useEffect(load, []);
 
+  const [tips, setTips] = useState({}); // date -> { cashTips, etransferTips }
   const todayStr = toDateStr(new Date());
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const days = view === "day" ? [dayDate] : weekDays;
@@ -146,6 +230,52 @@ export default function AllBookingsPage() {
   for (let m = gridStart; m <= gridEnd; m += 60) hourLabels.push(m);
   const compact = isMobile && view === "week";
   const gridCols = `${isMobile ? 34 : 56}px repeat(${days.length}, minmax(0, 1fr))`;
+
+  // Tips for whatever dates are on screen
+  useEffect(() => {
+    const ds = dayKey.split(",");
+    safeFetchJson(`/api/day-tips?from=${ds[0]}&to=${ds[ds.length - 1]}`, {
+      expectArray: true,
+      onSuccess: (rows) => {
+        const map = {};
+        for (const r of rows) map[r.date] = r;
+        setTips((cur) => ({ ...cur, ...map }));
+      },
+      onError: setError,
+    });
+  }, [dayKey]);
+
+  async function saveTips(date, cashTips, etransferTips) {
+    try {
+      const res = await fetch("/api/day-tips", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, cashTips, etransferTips }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not save tips.");
+        return false;
+      }
+      setTips((cur) => ({ ...cur, [date]: data }));
+      return true;
+    } catch {
+      setError("Could not reach the server. Check your connection.");
+      return false;
+    }
+  }
+
+  // What was collected for completed services on each visible day, by method
+  const takings = useMemo(() => {
+    const map = {};
+    for (const d of dayKey.split(",")) map[d] = { cash: 0, etransfer: 0, other: 0 };
+    for (const b of bookings) {
+      if (b.status !== "completed" || !map[b.date]) continue;
+      const k = b.paymentMethod === "cash" ? "cash" : b.paymentMethod === "etransfer" ? "etransfer" : "other";
+      map[b.date][k] += b.totalPrice;
+    }
+    return map;
+  }, [bookings, dayKey]);
 
   function toggleFilter(f) {
     setActiveFilters((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]));
@@ -408,9 +538,33 @@ export default function AllBookingsPage() {
                 </div>
               ))}
             </div>
+
+            {/* Daily takings + tips */}
+            <div className="grid border-t-2 border-ink-700 bg-ink-900/60" style={{ gridTemplateColumns: gridCols }}>
+              <div className="border-r border-ink-700 text-[9px] md:text-[10px] uppercase tracking-wide text-gray-500 text-center px-0.5 py-2">
+                Tips
+              </div>
+              {dayStrs.map((dStr) => {
+                const t = takings[dStr] || { cash: 0, etransfer: 0, other: 0 };
+                const hasTakings = t.cash + t.etransfer + t.other > 0;
+                return (
+                  <div key={dStr} className="border-r border-ink-700 last:border-r-0 min-w-0">
+                    <TipsCell date={dStr} tip={tips[dStr]} onSave={saveTips} compact={compact} />
+                    {!compact && hasTakings && (
+                      <div className="px-1.5 pb-1.5 text-[10px] leading-tight text-gray-500 border-t border-ink-800 pt-1">
+                        Paid for services:
+                        {t.cash > 0 && <div>Cash {money(t.cash)}</div>}
+                        {t.etransfer > 0 && <div>E-transfer {money(t.etransfer)}</div>}
+                        {t.other > 0 && <div>Unspecified {money(t.other)}</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-        {compact && <p className="text-[11px] text-gray-500 mt-2">Tap a day to open it, or a booking for details.</p>}
+        {compact && <p className="text-[11px] text-gray-500 mt-2">Tap a day to open it (and enter tips), or a booking for details.</p>}
       </main>
 
       {selected && (

@@ -122,6 +122,16 @@ model Notification {
   @@index([audience, read])
 }
 
+// Tips Ralf received on a given day, entered by hand at the end of the day on
+// the All Bookings page. One row per date (Ralf is one person, so it isn't
+// per location). Kept separate from service income everywhere.
+model DayTips {
+  date          String   @id // "YYYY-MM-DD"
+  cashTips      Float    @default(0)
+  etransferTips Float    @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
 // ---------------------------------------------------------------------------
 // About page content — all of it editable from the staff "Site Content" page.
 // ---------------------------------------------------------------------------
