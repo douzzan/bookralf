@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isStaffRequest } from "@/lib/auth";
-import { getAvailableStartTimes } from "@/lib/slots";
+import { getStartTimesForWindows } from "@/lib/scheduleWindows";
 import { dropPastStartTimes, getTorontoNow } from "@/lib/torontoTime";
 
 // GET /api/schedule?locationId=xxx  -> upcoming schedule days (today or later)
 // Public — customers need this to see which dates are bookable.
-// Each day also carries `full: true` when not even the shortest active
-// service still fits (everything booked, or the rest of today has passed),
-// so the booking calendar can grey it out. It's display-only: the booking
-// route still re-checks availability itself.
+// Each day also carries `full: true` when no start time is left that fits
+// the shortest active service (everything booked, or the time has passed).
+// Purely for display — the booking route still re-checks on submit.
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,16 +24,15 @@ export async function GET(request) {
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
 
-    // Shortest active service = the smallest thing anyone could still book.
+    // --- work out which days are full ---
     const shortest = await prisma.service.findFirst({
       where: { active: true },
       orderBy: { durationMin: "asc" },
       select: { durationMin: true },
     });
-
-    let result = days;
+    let result = days.map((d) => ({ ...d, full: false }));
     if (shortest && days.length > 0) {
-      // Ralf is one person, so a booking at any location blocks that time everywhere.
+      // Ralf is one person: a booking at any location blocks that date everywhere.
       const dates = [...new Set(days.map((d) => d.date))];
       const bookings = await prisma.booking.findMany({
         where: { date: { in: dates }, status: { in: ["pending", "confirmed"] } },
@@ -42,11 +40,17 @@ export async function GET(request) {
       });
       const byDate = {};
       for (const b of bookings) (byDate[b.date] ||= []).push(b);
-
-      result = days.map((d) => {
-        const open = dropPastStartTimes(d.date, getAvailableStartTimes(d, byDate[d.date] || [], shortest.durationMin));
-        return { ...d, full: open.length === 0 };
-      });
+      // A date can have several windows at one location — it is "full" only
+      // when none of them has room left.
+      const groups = {};
+      for (const d of days) (groups[`${d.locationId}|${d.date}`] ||= []).push(d);
+      const fullByGroup = {};
+      for (const [key, windows] of Object.entries(groups)) {
+        const date = windows[0].date;
+        const open = dropPastStartTimes(date, getStartTimesForWindows(windows, byDate[date] || [], shortest.durationMin));
+        fullByGroup[key] = open.length === 0;
+      }
+      result = days.map((d) => ({ ...d, full: fullByGroup[`${d.locationId}|${d.date}`] }));
     }
 
     return NextResponse.json(result);

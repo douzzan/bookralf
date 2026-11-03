@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { slotsNeeded, getAvailableStartTimes } from "@/lib/slots";
+import { slotsNeeded } from "@/lib/slots";
+import { getStartTimesForWindows, mergeWindows } from "@/lib/scheduleWindows";
 import { dropPastStartTimes } from "@/lib/torontoTime";
 
 // GET /api/availability?locationId=&date=&durationMin=
@@ -15,8 +16,9 @@ export async function GET(request) {
       return NextResponse.json({ error: "locationId, date, and durationMin are required" }, { status: 400 });
     }
 
-    const scheduleDay = await prisma.scheduleDay.findFirst({ where: { locationId, date } });
-    if (!scheduleDay) {
+    // All windows for this location/date (there can be more than one)
+    const windows = await prisma.scheduleDay.findMany({ where: { locationId, date }, orderBy: { startTime: "asc" } });
+    if (windows.length === 0) {
       return NextResponse.json({ scheduleDayId: null, startTimes: [] });
     }
 
@@ -29,12 +31,12 @@ export async function GET(request) {
     });
 
     const needed = slotsNeeded(durationMin); // informational only, for "needs N slots" messaging
-    const startTimes = dropPastStartTimes(date, getAvailableStartTimes(scheduleDay, existingBookings, durationMin));
+    const startTimes = dropPastStartTimes(date, getStartTimesForWindows(windows, existingBookings, durationMin));
 
     return NextResponse.json({
-      scheduleDayId: scheduleDay.id,
-      dayStart: scheduleDay.startTime,
-      dayEnd: scheduleDay.endTime,
+      scheduleDayId: windows[0].id,
+      dayStart: mergeWindows(windows)[0].startTime,
+      dayEnd: mergeWindows(windows).slice(-1)[0].endTime,
       slotsNeeded: needed,
       startTimes,
     });

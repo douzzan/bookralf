@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bookingInclude } from "@/lib/bookingInclude";
-import { slotsNeeded, getAvailableStartTimes, timeToMinutes, minutesToTime } from "@/lib/slots";
+import { slotsNeeded, timeToMinutes, minutesToTime } from "@/lib/slots";
+import { getStartTimesForWindows, windowForStart } from "@/lib/scheduleWindows";
 import { computeTotalDuration, getMaxTotalQty } from "@/lib/bucketDuration";
 import { notifyBookingRequested } from "@/lib/notifications";
 import { isStaffRequest } from "@/lib/auth";
@@ -53,8 +54,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "Name, phone, email, and address are required" }, { status: 400 });
     }
 
-    const scheduleDay = await prisma.scheduleDay.findFirst({ where: { locationId, date } });
-    if (!scheduleDay) {
+    const windows = await prisma.scheduleDay.findMany({ where: { locationId, date }, orderBy: { startTime: "asc" } });
+    if (windows.length === 0) {
       return NextResponse.json({ error: "No schedule exists for that location and date" }, { status: 409 });
     }
 
@@ -98,12 +99,12 @@ export async function POST(request) {
     // Blocked across all locations sharing this date — Ralf can only be
     // one place at a time. Uses the exact requested duration, not a
     // padded slot count, so the true reserved window matches what
-    // getAvailableStartTimes actually offered the customer.
+    // getStartTimesForWindows actually offered the customer.
     const existingBookings = await prisma.booking.findMany({
       where: { date, status: { in: ["pending", "confirmed"] } },
       select: { startTime: true, endTime: true },
     });
-    const validStarts = dropPastStartTimes(date, getAvailableStartTimes(scheduleDay, existingBookings, totalDurationMin));
+    const validStarts = dropPastStartTimes(date, getStartTimesForWindows(windows, existingBookings, totalDurationMin));
     if (!validStarts.includes(startTime)) {
       return NextResponse.json(
         { error: "That time is no longer available. Please choose another." },
@@ -120,7 +121,7 @@ export async function POST(request) {
         email,
         address,
         locationId,
-        scheduleDayId: scheduleDay.id,
+        scheduleDayId: windowForStart(windows, startTime).id,
         date,
         startTime,
         endTime,
